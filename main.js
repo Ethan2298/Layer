@@ -1,5 +1,86 @@
 const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
+const fs = require('fs');
+
+// Load .env file if it exists
+const envPath = path.join(__dirname, '.env');
+if (fs.existsSync(envPath)) {
+  const envContent = fs.readFileSync(envPath, 'utf-8');
+  envContent.split('\n').forEach(line => {
+    const [key, ...vals] = line.split('=');
+    if (key && vals.length) {
+      process.env[key.trim()] = vals.join('=').trim();
+    }
+  });
+}
+
+// Groq API configuration
+const GROQ_API_KEY = process.env.GROQ_API_KEY || '';
+const GROQ_MODEL = 'llama-3.1-8b-instant';
+
+console.log('🔑 GROQ_API_KEY:', GROQ_API_KEY ? 'SET (' + GROQ_API_KEY.slice(0, 8) + '...)' : 'NOT SET');
+
+// Calculate clarity using Groq LLM
+async function calculateClarityWithLLM(name, description) {
+  if (!GROQ_API_KEY) {
+    return { error: 'GROQ_API_KEY not set', score: null };
+  }
+
+  if (!name || !name.trim()) {
+    return { score: 0, label: 'fuzzy' };
+  }
+
+  // Build the content to evaluate
+  let content = `Title: ${name}`;
+  if (description && description.trim()) {
+    content += `\nDescription: ${description}`;
+  }
+
+  try {
+    console.log('🤖 Calling Groq API...');
+    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${GROQ_API_KEY}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        model: GROQ_MODEL,
+        messages: [
+          {
+            role: 'system',
+            content: `You evaluate how clear and actionable an objective/goal is based on its title and description.
+Rate from 0-100 where:
+- 0-30: Fuzzy (vague, no clear outcome or action)
+- 31-60: Forming (some clarity but missing specifics)
+- 61-100: Clear (specific, measurable, actionable)
+Respond with ONLY a number 0-100, nothing else.`
+          },
+          {
+            role: 'user',
+            content: content
+          }
+        ],
+        temperature: 0,
+        max_tokens: 10
+      })
+    });
+
+    const data = await response.json();
+    const scoreText = data.choices?.[0]?.message?.content?.trim();
+    console.log('📊 Groq response:', scoreText);
+    const score = parseInt(scoreText, 10);
+
+    if (isNaN(score) || score < 0 || score > 100) {
+      return { score: 50, label: 'forming', raw: scoreText };
+    }
+
+    const label = score <= 30 ? 'fuzzy' : score <= 60 ? 'forming' : 'clear';
+    return { score, label };
+  } catch (err) {
+    return { error: err.message, score: null };
+  }
+}
 
 function createWindow() {
   const win = new BrowserWindow({
@@ -28,6 +109,11 @@ function createWindow() {
     }
   });
   ipcMain.on('window-close', () => win.close());
+
+  // Clarity scoring with LLM
+  ipcMain.handle('calculate-clarity', async (event, name, description) => {
+    return await calculateClarityWithLLM(name, description);
+  });
 }
 
 app.whenReady().then(createWindow);
