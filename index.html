@@ -128,7 +128,7 @@
     }
 
     #header:hover {
-      background: #1a1a1a;
+      background: rgba(255, 255, 255, 0.06);
     }
 
     #header-title {
@@ -142,16 +142,11 @@
       margin-top: 2px;
     }
 
-    .clarity-fuzzy {
-      color: #ff8855;
-    }
-
-    .clarity-forming {
-      color: #ffcc55;
-    }
-
-    .clarity-clear {
-      color: #55ff88;
+    .clarity-fuzzy,
+    .clarity-less-fuzzy,
+    .clarity-clear,
+    .clarity-very-clear {
+      color: #888;
     }
 
     #header-description {
@@ -180,35 +175,80 @@
       margin-top: 0;
     }
 
+    /* ========================================
+       MODULAR LIST ITEM COMPONENT
+       Three-column layout: icon | content | meta
+       ======================================== */
     .list-item {
       padding: 2px 8px;
       cursor: pointer;
       display: flex;
-      justify-content: space-between;
       align-items: flex-start;
-      gap: 8px;
+      gap: 0;
     }
 
-    .list-item-text {
-      flex: 1;
-      word-wrap: break-word;
+    .list-item:hover {
+      background: rgba(255, 255, 255, 0.06);
     }
 
-    .list-item:hover,
     .list-item.selected {
       background: #1a1a1a;
     }
 
-    .clarity {
+    /* Icon Column - fixed width for alignment */
+    .list-item-icon {
+      color: #888;
+      flex-shrink: 0;
+      min-width: 20px;
+      text-align: left;
+    }
+
+    .list-item-icon.editing {
+      color: #0891b2;
+    }
+
+    .list-item-icon.numeric {
+      min-width: 24px;
+    }
+
+    .list-item-icon.timestamp {
+      color: #666;
+      font-size: 12px;
+      min-width: auto;
+      margin-right: 8px;
+    }
+
+    /* Content Column - flexible, wraps text */
+    .list-item-content {
+      flex: 1;
+      min-width: 0;
+      word-wrap: break-word;
+      overflow-wrap: break-word;
+    }
+
+    .list-item-content[contenteditable="true"] {
+      outline: none;
+      caret-color: #e0e0e0;
+      cursor: text;
+    }
+
+    /* Meta Column - right-aligned, fixed minimum width */
+    .list-item-meta {
       display: flex;
       align-items: center;
       justify-content: flex-end;
       gap: 6px;
-      padding-right: 8px;
+      padding-left: 8px;
       white-space: nowrap;
       min-width: 90px;
+      flex-shrink: 0;
     }
 
+    .list-item-meta.compact {
+      min-width: auto;
+    }
+
+    /* Clarity Badge (used in meta column) */
     .clarity-score {
       color: #888;
       font-size: 12px;
@@ -225,16 +265,19 @@
 
     .edit-btn {
       display: none;
-      color: #0891b2;
+      color: #666;
       font-size: 11px;
       padding: 1px 8px;
       cursor: pointer;
+      opacity: 0.5;
     }
 
     .edit-btn:hover {
-      color: #fff;
+      color: #888;
+      opacity: 0.8;
     }
 
+    /* Hover behavior: hide clarity, show edit */
     .list-item:hover .clarity-score,
     .list-item:hover .clarity-badge {
       display: none;
@@ -244,9 +287,15 @@
       display: block;
     }
 
-    .step-timestamp {
-      color: #666;
-      font-size: 12px;
+    /* Legacy support - kept for header clarity display */
+    .clarity {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 6px;
+      padding-right: 8px;
+      white-space: nowrap;
+      min-width: 90px;
     }
 
     .add-option {
@@ -257,7 +306,7 @@
 
     .add-option:hover,
     .add-option.selected {
-      background: #1a1a1a;
+      background: rgba(255, 255, 255, 0.06);
     }
 
     .add-option.disabled {
@@ -284,12 +333,13 @@
 
     .prompt-input-wrap {
       display: flex;
-      align-items: center;
+      align-items: flex-start;
     }
 
     .prompt-prefix {
       color: #0891b2;
       margin-right: 4px;
+      margin-top: 2px;
     }
 
     .prompt-input {
@@ -299,9 +349,13 @@
       color: #e0e0e0;
       font-family: inherit;
       font-size: inherit;
+      line-height: 1.4;
       outline: none;
       caret-color: #e0e0e0;
       padding: 0;
+      resize: none;
+      overflow: hidden;
+      min-height: 1.4em;
     }
 
     /* Confirm row */
@@ -536,15 +590,19 @@
       // Use cached LLM score if available
       if (item.clarityScore !== undefined && item.clarityScore !== null) {
         const score = item.clarityScore;
-        return score <= 30 ? 'fuzzy' : score <= 60 ? 'forming' : 'clear';
+        if (score <= 40) return 'fuzzy';
+        if (score <= 60) return 'less fuzzy';
+        if (score <= 80) return 'clear';
+        return 'very clear';
       }
 
       // Fallback to word count
       const desc = item.description || '';
       const wordCount = desc.trim().split(/\s+/).filter(w => w).length;
       if (wordCount === 0) return 'fuzzy';
-      if (wordCount < 10) return 'forming';
-      return 'clear';
+      if (wordCount < 5) return 'less fuzzy';
+      if (wordCount < 15) return 'clear';
+      return 'very clear';
     }
 
     // Get clarity display HTML with score, badge, and edit button
@@ -565,6 +623,96 @@
       } else {
         // Fallback score based on word count clarity
         score = clarity === 'fuzzy' ? 15 : clarity === 'forming' ? 45 : 75;
+        scoreText = '—';
+      }
+
+      return `<span class="clarity-score">${scoreText}</span><span class="clarity-badge">${clarity}</span><span class="edit-btn" data-section="${section}" data-index="${index}">edit</span>`;
+    }
+
+    // ========================================
+    // MODULAR LIST ITEM COMPONENT
+    // Creates consistent list items with icon/content/meta columns
+    // ========================================
+
+    /**
+     * Create a modular list item element
+     * @param {Object} options
+     * @param {string} options.icon - Icon/prefix content (number, dash, timestamp)
+     * @param {string} options.iconClass - Additional classes for icon column
+     * @param {string} options.content - Main text content
+     * @param {boolean} options.contentEditable - Make content editable
+     * @param {string} options.meta - Right column content (clarity badge, edit btn)
+     * @param {boolean} options.selected - Is item selected
+     * @param {Function} options.onClick - Click handler
+     * @param {Object} options.dataAttrs - Data attributes for the item
+     * @returns {HTMLElement}
+     */
+    function createListItem(options = {}) {
+      const {
+        icon = '',
+        iconClass = '',
+        content = '',
+        contentEditable = false,
+        meta = '',
+        metaClass = '',
+        selected = false,
+        onClick = null,
+        dataAttrs = {}
+      } = options;
+
+      const div = document.createElement('div');
+      div.className = 'list-item' + (selected ? ' selected' : '');
+
+      // Set data attributes
+      for (const [key, value] of Object.entries(dataAttrs)) {
+        div.dataset[key] = value;
+      }
+
+      // Build inner HTML with three columns
+      let html = '';
+
+      // Icon column (always present for alignment, can be empty)
+      const iconClasses = ['list-item-icon', iconClass].filter(Boolean).join(' ');
+      html += `<span class="${iconClasses}">${icon}</span>`;
+
+      // Content column
+      const contentAttrs = contentEditable ? ' contenteditable="true"' : '';
+      const escapedContent = content.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      html += `<span class="list-item-content"${contentAttrs}>${escapedContent}</span>`;
+
+      // Meta column (optional)
+      if (meta) {
+        const metaClasses = ['list-item-meta', metaClass].filter(Boolean).join(' ');
+        html += `<span class="${metaClasses}">${meta}</span>`;
+      }
+
+      div.innerHTML = html;
+
+      // Attach click handler
+      if (onClick) {
+        div.onclick = onClick;
+      }
+
+      return div;
+    }
+
+    /**
+     * Get clarity meta HTML for list items
+     * Shows score + badge normally, edit button on hover
+     */
+    function getClarityMeta(item, section = 'objectives', index = 0) {
+      const clarity = calculateClarity(item);
+
+      if (item._clarityLoading) {
+        return `<span class="clarity-score">...</span><span class="edit-btn" data-section="${section}" data-index="${index}">edit</span>`;
+      }
+
+      let score = item.clarityScore;
+      let scoreText;
+
+      if (score !== undefined && score !== null) {
+        scoreText = `${score}%`;
+      } else {
         scoreText = '—';
       }
 
@@ -730,7 +878,7 @@
         titleEl.textContent = parent.name;
         const clarity = calculateClarity(parent);
         clarityEl.textContent = getClarityDisplay(parent);
-        clarityEl.className = `clarity-${clarity}`;
+        clarityEl.className = `clarity-${clarity.replace(/\s+/g, '-')}`;
         descEl.textContent = parent.description ? `"${parent.description}"` : '';
         // Trigger async clarity refresh if needed
         refreshClarity(parent);
@@ -779,15 +927,22 @@
 
     // Create inline prompt HTML
     function createPromptRow(label, defaultValue = '') {
+      const escaped = defaultValue.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
       return `
         <div class="prompt-row">
           <div class="prompt-label">${label}</div>
           <div class="prompt-input-wrap">
             <span class="prompt-prefix">&gt;</span>
-            <input type="text" class="prompt-input" value="${defaultValue.replace(/"/g, '&quot;')}" autocomplete="off" spellcheck="false">
+            <textarea class="prompt-input" rows="1" autocomplete="off" spellcheck="false">${escaped}</textarea>
           </div>
         </div>
       `;
+    }
+
+    // Auto-resize textarea to fit content
+    function autoResizeTextarea(textarea) {
+      textarea.style.height = 'auto';
+      textarea.style.height = textarea.scrollHeight + 'px';
     }
 
     // Create confirm row HTML
@@ -814,10 +969,45 @@
       // Focus input if prompt is active
       if (promptMode) {
         setTimeout(() => {
+          // First try contenteditable element (for priorities/steps inline edit)
+          const contentEditable = container.querySelector('[contenteditable="true"]');
+          if (contentEditable) {
+            contentEditable.focus();
+            // Move cursor to end of contenteditable
+            const range = document.createRange();
+            const sel = window.getSelection();
+            range.selectNodeContents(contentEditable);
+            range.collapse(false); // false = collapse to end
+            sel.removeAllRanges();
+            sel.addRange(range);
+
+            // Save on blur (click away)
+            contentEditable.addEventListener('blur', () => {
+              if (promptMode) {
+                processPromptInput(contentEditable.textContent);
+              }
+            }, { once: true });
+            return;
+          }
+
+          // Fall back to traditional input (for objectives and add prompts)
           const input = container.querySelector('.prompt-input');
           if (input) {
             input.focus();
-            input.setSelectionRange(input.value.length, input.value.length);
+            // Move cursor to end
+            const len = input.value.length;
+            input.setSelectionRange(len, len);
+            // Auto-resize if textarea
+            if (input.tagName === 'TEXTAREA') {
+              autoResizeTextarea(input);
+              input.addEventListener('input', () => autoResizeTextarea(input));
+            }
+            // Save on blur (click away)
+            input.addEventListener('blur', () => {
+              if (promptMode) {
+                processPromptInput(input.value);
+              }
+            }, { once: true });
           }
         }, 0);
       }
@@ -826,7 +1016,8 @@
     // Render objectives list (top level)
     function renderObjectivesList(container) {
       data.objectives.forEach((obj, index) => {
-        if (promptMode === 'edit' && promptTargetIndex === index) {
+        // Handle prompt modes (edit, refine, confirm)
+        if (promptMode === 'edit' && promptTargetIndex === index && promptTargetSection === 'objectives') {
           const div = document.createElement('div');
           div.innerHTML = createPromptRow(getPromptLabel(), getPromptDefault());
           container.appendChild(div.firstElementChild);
@@ -847,13 +1038,21 @@
           return;
         }
 
-        const div = document.createElement('div');
-        div.className = 'list-item' + (keyboardMode && index === selectedIndex && !promptMode ? ' selected' : '');
-        div.onclick = () => { keyboardMode = false; handleSelect(index); };
+        // Use modular ListItem component
+        const listItem = createListItem({
+          icon: `${index + 1}.`,
+          iconClass: 'numeric',
+          content: obj.name,
+          meta: getClarityMeta(obj, 'objectives', index),
+          selected: keyboardMode && index === selectedIndex && !promptMode,
+          onClick: (e) => {
+            if (e.target.classList.contains('edit-btn')) return;
+            keyboardMode = false;
+            handleSelect(index);
+          }
+        });
+        container.appendChild(listItem);
 
-        const clarity = calculateClarity(obj);
-        div.innerHTML = `<span class="list-item-text">${index + 1}. ${obj.name}</span><span class="clarity">${getClarityDisplay(obj, 'objectives', index)}</span>`;
-        container.appendChild(div);
         // Trigger async clarity refresh
         refreshClarity(obj);
       });
@@ -898,22 +1097,7 @@
       obj.priorities.forEach((priority, index) => {
         const currentGlobalIndex = globalIndex;
 
-        if (promptMode === 'edit' && promptTargetSection === 'priorities' && promptTargetIndex === index) {
-          const div = document.createElement('div');
-          div.innerHTML = createPromptRow(getPromptLabel(), getPromptDefault());
-          container.appendChild(div.firstElementChild);
-          globalIndex++;
-          return;
-        }
-
-        if (promptMode === 'refine' && promptTargetSection === 'priorities' && promptTargetIndex === index) {
-          const div = document.createElement('div');
-          div.innerHTML = createPromptRow('Refine description:', priority.description || '');
-          container.appendChild(div.firstElementChild);
-          globalIndex++;
-          return;
-        }
-
+        // Handle confirm mode
         if (promptMode === 'confirm' && promptTargetSection === 'priorities' && promptTargetIndex === index) {
           const div = document.createElement('div');
           div.innerHTML = createConfirmRow(`Delete "${priority.name}"?`);
@@ -922,14 +1106,34 @@
           return;
         }
 
-        const div = document.createElement('div');
-        div.className = 'list-item' + (keyboardMode && currentGlobalIndex === selectedIndex && !promptMode ? ' selected' : '');
-        div.onclick = () => { keyboardMode = false; updateList(); };
+        // Determine edit/refine state
+        const isEditing = promptMode === 'edit' && promptTargetSection === 'priorities' && promptTargetIndex === index;
+        const isRefining = promptMode === 'refine' && promptTargetSection === 'priorities' && promptTargetIndex === index;
+        const isInEditMode = isEditing || isRefining;
 
-        const clarity = calculateClarity(priority);
-        div.innerHTML = `<span class="list-item-text">- ${priority.name}</span><span class="clarity">${getClarityDisplay(priority, 'priorities', index)}</span>`;
-        container.appendChild(div);
+        // Get the text to display (name for edit, description for refine)
+        let textContent = priority.name;
+        if (isRefining) {
+          textContent = priority.description || '';
+        }
+
+        // Use modular ListItem component
+        const listItem = createListItem({
+          icon: isInEditMode ? '>' : '-',
+          iconClass: isInEditMode ? 'editing' : '',
+          content: textContent,
+          contentEditable: isInEditMode,
+          meta: isInEditMode ? '' : getClarityMeta(priority, 'priorities', index),
+          selected: keyboardMode && currentGlobalIndex === selectedIndex && !promptMode,
+          onClick: (e) => {
+            if (e.target.classList.contains('edit-btn')) return;
+            keyboardMode = false;
+            updateList();
+          }
+        });
+        container.appendChild(listItem);
         globalIndex++;
+
         // Trigger async clarity refresh
         refreshClarity(priority);
       });
@@ -975,14 +1179,7 @@
         const step = obj.steps[actualIdx];
         const currentGlobalIndex = globalIndex;
 
-        if (promptMode === 'edit' && promptTargetSection === 'steps' && promptTargetIndex === actualIdx) {
-          const div = document.createElement('div');
-          div.innerHTML = createPromptRow('Step:', step.name);
-          container.appendChild(div.firstElementChild);
-          globalIndex++;
-          continue;
-        }
-
+        // Handle confirm mode
         if (promptMode === 'confirm' && promptTargetSection === 'steps' && promptTargetIndex === actualIdx) {
           const div = document.createElement('div');
           div.innerHTML = createConfirmRow(`Delete "${step.name}"?`);
@@ -991,14 +1188,29 @@
           continue;
         }
 
-        const div = document.createElement('div');
-        div.className = 'list-item' + (keyboardMode && currentGlobalIndex === selectedIndex && !promptMode ? ' selected' : '');
-        div.onclick = () => { keyboardMode = false; updateList(); };
-
         const timestamp = formatTimestamp(step.loggedAt);
         const orderNum = step.orderNumber || (actualIdx + 1); // Fallback for legacy steps
-        div.innerHTML = `<span class="step-timestamp">#${orderNum} ${timestamp}</span> ${step.name}`;
-        container.appendChild(div);
+
+        // Determine if this step is being edited
+        const isEditing = promptMode === 'edit' && promptTargetSection === 'steps' && promptTargetIndex === actualIdx;
+
+        // Use modular ListItem component
+        // For steps, icon is the timestamp; when editing, add > prefix
+        const iconContent = isEditing ? `#${orderNum} ${timestamp} >` : `#${orderNum} ${timestamp}`;
+        const listItem = createListItem({
+          icon: iconContent,
+          iconClass: isEditing ? 'timestamp editing' : 'timestamp',
+          content: step.name,
+          contentEditable: isEditing,
+          meta: '', // Steps don't have clarity badges
+          metaClass: 'compact',
+          selected: keyboardMode && currentGlobalIndex === selectedIndex && !promptMode,
+          onClick: () => {
+            keyboardMode = false;
+            updateList();
+          }
+        });
+        container.appendChild(listItem);
         globalIndex++;
       }
 
@@ -1023,8 +1235,7 @@
         if (promptStep === 0) return `${capitalize(promptData.type)} name:`;
         if (promptStep === 1) return 'Description (optional):';
       } else if (promptMode === 'edit') {
-        if (promptStep === 0) return 'Name:';
-        if (promptStep === 1) return 'Description:';
+        return 'Name:';
       }
       return '';
     }
@@ -1032,8 +1243,7 @@
     // Get prompt default
     function getPromptDefault() {
       if (promptMode === 'edit' && promptData.item) {
-        if (promptStep === 0) return promptData.item.name;
-        if (promptStep === 1) return promptData.item.description || '';
+        return promptData.item.name;
       }
       return '';
     }
@@ -1319,31 +1529,18 @@
 
     // Process edit
     function processEditStep(value) {
-      if (promptStep === 0) {
-        if (!value.trim()) {
-          showMessage('Name is required');
-          updateList();
-          return;
-        }
-        promptData.newName = value.trim();
-        if (promptData.type === 'step') {
-          finishEdit();
-        } else {
-          promptStep = 1;
-          updateList();
-        }
-      } else if (promptStep === 1) {
-        promptData.newDescription = value.trim();
-        finishEdit();
+      if (!value.trim()) {
+        showMessage('Name is required');
+        updateList();
+        return;
       }
+      promptData.newName = value.trim();
+      finishEdit();
     }
 
     // Finish edit
     function finishEdit() {
       promptData.item.name = promptData.newName;
-      if (promptData.type !== 'step') {
-        promptData.item.description = promptData.newDescription || '';
-      }
       saveData();
       cancelPrompt();
     }
@@ -1391,8 +1588,15 @@
           cancelPrompt();
           return;
         }
-        if (e.key === 'Enter') {
+        if (e.key === 'Enter' && !e.shiftKey) {
           e.preventDefault();
+          // First try contenteditable (for priorities/steps inline edit)
+          const contentEditable = document.querySelector('[contenteditable="true"]');
+          if (contentEditable) {
+            processPromptInput(contentEditable.textContent);
+            return;
+          }
+          // Fall back to traditional input
           const input = document.querySelector('.prompt-input');
           if (input) processPromptInput(input.value);
           return;
@@ -1519,8 +1723,8 @@
           selectedIndex = index;
           startEdit();
         } else if (section === 'priorities') {
-          promptTargetSection = 'priorities';
-          promptTargetIndex = index;
+          // Set selectedIndex so getSelectionInfo() returns the correct priority
+          selectedIndex = index;
           startEdit();
         }
       }
