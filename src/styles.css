@@ -213,13 +213,7 @@ body.browser-mode #intro {
 }
 
 #side-list-indicator {
-  position: absolute;
-  top: 30vh;
-  right: 12px;
-  color: #0891b2;
-  font-size: 8px;
-  z-index: 10;
-  pointer-events: none;
+  display: none;
 }
 
 #side-list-items {
@@ -240,7 +234,7 @@ body.browser-mode #intro {
 .side-item {
   display: flex;
   align-items: center;
-  padding: 2px 24px 2px 8px;
+  padding: 2px 8px;
   cursor: pointer;
   color: #888;
   transition: color 0.15s;
@@ -294,6 +288,13 @@ body.browser-mode #intro {
 
 .side-item-indicator {
   display: none;
+  color: #0891b2;
+  font-size: 8px;
+  margin-left: 6px;
+}
+
+.side-item.selected .side-item-indicator {
+  display: inline;
 }
 
 /* ========================================
