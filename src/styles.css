@@ -325,9 +325,9 @@ body.browser-mode #intro {
 }
 
 #content-header-title {
-  font-weight: bold;
+  font-weight: 600;
   color: #fff;
-  font-size: 16px;
+  font-size: 1.8em;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;

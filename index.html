@@ -242,66 +242,99 @@
     function getDummyData() {
       const now = new Date();
       const hourAgo = new Date(now - 60 * 60 * 1000);
+      const twoHoursAgo = new Date(now - 2 * 60 * 60 * 1000);
       const dayAgo = new Date(now - 24 * 60 * 60 * 1000);
       const twoDaysAgo = new Date(now - 2 * 24 * 60 * 60 * 1000);
+      const threeDaysAgo = new Date(now - 3 * 24 * 60 * 60 * 1000);
+      const weekAgo = new Date(now - 7 * 24 * 60 * 60 * 1000);
 
       return {
         objectives: [
           {
             id: 'obj1',
             name: 'Learn Rust programming',
-            description: 'Master systems programming with Rust for building fast, reliable software',
+            description: 'Master systems programming with Rust to build fast, reliable software and expand my technical skill set',
             clarityScore: 78,
             priorities: [
-              { id: 'p1a', name: 'Complete the Rust Book', description: 'Read through all chapters and do exercises', clarityScore: 85 },
-              { id: 'p1b', name: 'Build a CLI tool', description: 'Create a practical command-line application', clarityScore: 72 },
-              { id: 'p1c', name: 'Contribute to open source', description: 'Find a Rust project and submit a PR', clarityScore: 45 }
+              { id: 'p1a', name: 'Complete the Rust Book', description: 'Work through all chapters systematically, doing every exercise', clarityScore: 85 },
+              { id: 'p1b', name: 'Build a CLI tool', description: 'Create a practical file organizer or todo app to apply what I learn', clarityScore: 72 },
+              { id: 'p1c', name: 'Practice on Exercism', description: 'Complete at least 20 exercises on the Rust track', clarityScore: 68 },
+              { id: 'p1d', name: 'Contribute to open source', description: 'Find a beginner-friendly Rust project and submit my first PR', clarityScore: 45 }
             ],
             steps: [
-              { id: 's1a', name: 'Installed rustup and cargo', loggedAt: twoDaysAgo.toISOString(), orderNumber: 1 },
-              { id: 's1b', name: 'Finished chapters 1-3 of the Rust Book', loggedAt: dayAgo.toISOString(), orderNumber: 2 },
-              { id: 's1c', name: 'Wrote first ownership examples', loggedAt: hourAgo.toISOString(), orderNumber: 3 }
+              { id: 's1a', name: 'Installed rustup and cargo on my machine', loggedAt: weekAgo.toISOString(), orderNumber: 1 },
+              { id: 's1b', name: 'Completed chapters 1-3 of the Rust Book', loggedAt: threeDaysAgo.toISOString(), orderNumber: 2 },
+              { id: 's1c', name: 'Wrote ownership examples to understand move semantics', loggedAt: twoDaysAgo.toISOString(), orderNumber: 3 },
+              { id: 's1d', name: 'Finished Chapter 4 - Ownership deep dive', loggedAt: dayAgo.toISOString(), orderNumber: 4 },
+              { id: 's1e', name: 'Practiced borrowing with code examples', loggedAt: hourAgo.toISOString(), orderNumber: 5 }
             ]
           },
           {
             id: 'obj2',
-            name: 'Get in shape for summer',
-            description: 'Build consistent exercise habits and improve overall fitness',
-            clarityScore: 62,
+            name: 'Build consistent fitness habits',
+            description: 'Exercise regularly and improve nutrition to feel stronger and more energetic',
+            clarityScore: 74,
             priorities: [
-              { id: 'p2a', name: 'Exercise 4x per week', description: 'Mix of strength training and cardio', clarityScore: 80 },
-              { id: 'p2b', name: 'Track nutrition', description: 'Log meals and aim for balanced macros', clarityScore: 55 }
+              { id: 'p2a', name: 'Exercise 4x per week', description: 'Upper/lower split with cardio on rest days', clarityScore: 85 },
+              { id: 'p2b', name: 'Track nutrition consistently', description: 'Log meals in app, hit protein target of 150g daily', clarityScore: 70 },
+              { id: 'p2c', name: 'Sleep 7-8 hours nightly', description: 'Consistent bedtime, no screens 1hr before sleep', clarityScore: 65 }
             ],
             steps: [
-              { id: 's2a', name: 'Signed up for gym membership', loggedAt: twoDaysAgo.toISOString(), orderNumber: 1 },
-              { id: 's2b', name: 'Did first workout - legs and core', loggedAt: dayAgo.toISOString(), orderNumber: 2 },
-              { id: 's2c', name: 'Morning run - 2 miles', loggedAt: now.toISOString(), orderNumber: 3 }
+              { id: 's2a', name: 'Signed up for gym membership', loggedAt: weekAgo.toISOString(), orderNumber: 1 },
+              { id: 's2b', name: 'Created workout split plan', loggedAt: threeDaysAgo.toISOString(), orderNumber: 2 },
+              { id: 's2c', name: 'Upper body day - bench, rows, shoulders', loggedAt: twoDaysAgo.toISOString(), orderNumber: 3 },
+              { id: 's2d', name: 'Meal prepped chicken and rice for the week', loggedAt: dayAgo.toISOString(), orderNumber: 4 },
+              { id: 's2e', name: 'Leg day - squats, deadlifts, leg press', loggedAt: twoHoursAgo.toISOString(), orderNumber: 5 },
+              { id: 's2f', name: 'Morning 2-mile run', loggedAt: now.toISOString(), orderNumber: 6 }
             ]
           },
           {
             id: 'obj3',
-            name: 'Launch side project',
-            description: '',
-            clarityScore: 28,
+            name: 'Launch personal finance dashboard',
+            description: 'Build a tool to aggregate and visualize spending across all my accounts',
+            clarityScore: 52,
             priorities: [
-              { id: 'p3a', name: 'Define MVP scope', description: '', clarityScore: 35 }
+              { id: 'p3a', name: 'Research Plaid API', description: 'Understand capabilities, pricing, and setup requirements', clarityScore: 65 },
+              { id: 'p3b', name: 'Define MVP features', description: 'Account linking, transaction categorization, basic charts', clarityScore: 48 },
+              { id: 'p3c', name: 'Choose tech stack', description: 'Rust backend with React frontend, or simpler approach?', clarityScore: 40 }
             ],
             steps: [
-              { id: 's3a', name: 'Brainstormed initial ideas', loggedAt: dayAgo.toISOString(), orderNumber: 1 }
+              { id: 's3a', name: 'Wrote down pain points with current finance tracking', loggedAt: threeDaysAgo.toISOString(), orderNumber: 1 },
+              { id: 's3b', name: 'Reviewed Plaid documentation and pricing', loggedAt: dayAgo.toISOString(), orderNumber: 2 }
             ]
           },
           {
             id: 'obj4',
-            name: 'Read more books',
-            description: 'Read at least 2 books per month across different genres',
-            clarityScore: 70,
+            name: 'Read 24 books this year',
+            description: 'Read at least 2 books per month across technical, business, and personal development',
+            clarityScore: 82,
             priorities: [
-              { id: 'p4a', name: 'Set daily reading time', description: '30 minutes before bed', clarityScore: 90 },
-              { id: 'p4b', name: 'Join a book club', description: 'Find local or online community', clarityScore: 40 }
+              { id: 'p4a', name: 'Read 30 minutes daily', description: 'Before bed, replace phone scrolling with reading', clarityScore: 90 },
+              { id: 'p4b', name: 'Keep a reading log', description: 'Note key takeaways and how to apply them', clarityScore: 75 },
+              { id: 'p4c', name: 'Mix genres deliberately', description: '1 technical, 1 non-fiction, 1 fiction per quarter', clarityScore: 70 }
             ],
             steps: [
-              { id: 's4a', name: 'Finished "Atomic Habits"', loggedAt: twoDaysAgo.toISOString(), orderNumber: 1 },
-              { id: 's4b', name: 'Started "Deep Work"', loggedAt: hourAgo.toISOString(), orderNumber: 2 }
+              { id: 's4a', name: 'Finished "Atomic Habits" by James Clear', loggedAt: weekAgo.toISOString(), orderNumber: 1 },
+              { id: 's4b', name: 'Started "Deep Work" by Cal Newport', loggedAt: threeDaysAgo.toISOString(), orderNumber: 2 },
+              { id: 's4c', name: 'Completed chapter 3 of Deep Work', loggedAt: dayAgo.toISOString(), orderNumber: 3 },
+              { id: 's4d', name: 'Added 5 books to reading list from recommendations', loggedAt: hourAgo.toISOString(), orderNumber: 4 }
+            ]
+          },
+          {
+            id: 'obj5',
+            name: 'Improve productivity systems',
+            description: 'Develop consistent workflows for capturing ideas, planning days, and reviewing progress',
+            clarityScore: 68,
+            priorities: [
+              { id: 'p5a', name: 'Daily journaling habit', description: 'Morning pages or evening reflection, 10 minutes', clarityScore: 75 },
+              { id: 'p5b', name: 'Weekly review ritual', description: 'Sunday afternoon review and plan for the week', clarityScore: 80 },
+              { id: 'p5c', name: 'Reduce context switching', description: 'Time block calendar, batch similar tasks', clarityScore: 55 }
+            ],
+            steps: [
+              { id: 's5a', name: 'Set up notes folder structure', loggedAt: weekAgo.toISOString(), orderNumber: 1 },
+              { id: 's5b', name: 'Created weekly review template', loggedAt: threeDaysAgo.toISOString(), orderNumber: 2 },
+              { id: 's5c', name: 'Completed first weekly review', loggedAt: twoDaysAgo.toISOString(), orderNumber: 3 },
+              { id: 's5d', name: 'Tried pomodoro technique - worked well for focus', loggedAt: dayAgo.toISOString(), orderNumber: 4 }
             ]
           }
         ]
@@ -1060,14 +1093,15 @@
 
     // Select file by path (for note viewing)
     async function selectFile(filePath, fileName) {
-      // Check if file reading is available
-      if (!window.electronAPI?.folderExplorer?.readFile) {
+      // Use FolderExplorer module for reading (handles both Electron and browser mode)
+      const FolderExplorer = window.Objectiv?.FolderExplorer;
+      if (!FolderExplorer?.readFile) {
         showMessage('File reading not available');
         return;
       }
 
       // Read the file content
-      const result = await window.electronAPI.folderExplorer.readFile(filePath);
+      const result = await FolderExplorer.readFile(filePath);
       if (!result.success) {
         showMessage(`Error: ${result.error}`);
         return;
@@ -1097,17 +1131,24 @@
       const headerDesc = document.getElementById('content-header-description');
       const body = document.getElementById('content-body');
 
-      // Get filename from path
       const fileName = selectedFilePath.split('/').pop();
+      const content = selectedFileContent || '';
 
-      // Header shows filename
-      headerTitle.textContent = fileName;
-      headerDesc.innerHTML = `<span class="file-header-path">${selectedFilePath}</span>`;
+      // Extract first line as title, rest as body content
+      const lines = content.split('\n');
+      let title = lines[0] || fileName;
+      let bodyContent = lines.slice(1).join('\n').trimStart();
+
+      // Strip markdown heading prefix (# ## ### etc) from title
+      title = title.replace(/^#+\s*/, '');
+
+      headerTitle.textContent = title;
+      headerDesc.textContent = '';
 
       // Check if it's a markdown file or text file
       const Markdown = window.Objectiv?.Markdown;
       if (!Markdown) {
-        body.innerHTML = `<pre style="color:#888;white-space:pre-wrap;padding:16px;">${escapeHtml(selectedFileContent || '')}</pre>`;
+        body.innerHTML = `<pre style="color:#888;white-space:pre-wrap;padding:16px;">${escapeHtml(bodyContent)}</pre>`;
         return;
       }
 
@@ -1120,12 +1161,12 @@
       }
 
       if (isMarkdown) {
-        // Render as markdown
-        const html = Markdown.parseMarkdown(selectedFileContent || '');
+        // Render remaining content as markdown
+        const html = Markdown.parseMarkdown(bodyContent);
         body.innerHTML = `<div class="markdown-content">${html}</div>`;
       } else {
         // Render as plain text with code styling
-        body.innerHTML = `<div class="markdown-content"><pre class="md-code-block"><code>${escapeHtml(selectedFileContent || '')}</code></pre></div>`;
+        body.innerHTML = `<div class="markdown-content"><pre class="md-code-block"><code>${escapeHtml(bodyContent)}</code></pre></div>`;
       }
     }
 
@@ -2226,6 +2267,17 @@
     // Initialize
     async function init() {
       await showIntro();
+
+      // In browser mode, always use dummy folder data
+      const FolderExplorer = window.Objectiv?.FolderExplorer;
+      const SideListState = window.Objectiv?.SideListState;
+      if (FolderExplorer?.isDummyMode?.() && SideListState) {
+        const dummyRoot = FolderExplorer.getDummyRootPath?.() || '/notes';
+        FolderExplorer.clearCache?.();
+        FolderExplorer.setRootPath?.(dummyRoot);
+        SideListState.setRootPath(dummyRoot);
+      }
+
       updateView();
     }
 
