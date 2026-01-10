@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Objectiv.go</title>
   <link rel="stylesheet" href="src/styles.css">
+  <script src="https://unpkg.com/lucide@latest"></script>
   <script type="module" src="src/app.js"></script>
 </head>
 <body>
@@ -775,6 +776,11 @@
       container.innerHTML = '';
       container.appendChild(fragment);
 
+      // Initialize Lucide icons
+      if (window.lucide) {
+        lucide.createIcons();
+      }
+
       // Scroll selected into view
       const selectedEl = container.querySelector('.side-item.selected');
       if (selectedEl) {
@@ -807,8 +813,7 @@
             item.style.color = '#0891b2';
           } else {
             item.innerHTML = `
-              <span class="side-item-name">${itemData.name}</span>
-              ${indicator}
+              <span class="side-item-name">${itemData.name}</span>${indicator}
             `;
             item.onclick = () => handleSideItemClick(idx, itemData);
           }
@@ -822,19 +827,23 @@
           break;
 
         case ItemType.FILES_HEADER:
-          item.className = 'side-item files-header';
+          item.className = 'side-item files-header' + (isSelected ? ' selected' : '');
           item.dataset.type = 'files-header';
           item.innerHTML = `
-            <span class="folder-toggle">${itemData.isCollapsed ? '>' : 'v'}</span>
-            <span class="side-item-name">FILES</span>
-            ${itemData.rootPath ? `<span class="folder-path" title="${itemData.rootPath}">${getShortPath(itemData.rootPath)}</span>` : ''}
+            <i data-lucide="${itemData.isCollapsed ? 'folder' : 'folder-open'}" class="folder-icon"></i>
+            <span class="side-item-name">FILES</span>${indicator}${itemData.rootPath ? `<span class="folder-path" title="${itemData.rootPath}">${getShortPath(itemData.rootPath)}</span>` : ''}
           `;
-          item.onclick = () => handleSideItemClick(idx, itemData);
+          item.onclick = async (e) => {
+            e.stopPropagation();
+            SideListState.toggleFolderSection();
+            await renderSideList();
+          };
           break;
 
         case ItemType.SET_FOLDER:
           item.className = 'side-item add-option' + (isSelected ? ' selected' : '');
           item.dataset.type = 'set-folder';
+          item.style.paddingLeft = '20px';
           item.innerHTML = `<span class="side-item-name">+ Set folder</span>${indicator}`;
           item.onclick = () => handleSideItemClick(idx, itemData);
           break;
@@ -843,11 +852,10 @@
           item.className = 'side-item folder-item' + (isSelected ? ' selected' : '');
           item.dataset.type = 'folder';
           item.dataset.path = itemData.path;
-          item.style.paddingLeft = `${8 + itemData.depth * 12}px`;
+          item.style.paddingLeft = `${20 + itemData.depth * 12}px`;
           item.innerHTML = `
-            <span class="folder-icon">${itemData.isExpanded ? '📂' : '📁'}</span>
-            <span class="side-item-name">${itemData.name}</span>
-            ${indicator}
+            <i data-lucide="${itemData.isExpanded ? 'folder-open' : 'folder'}" class="folder-icon"></i>
+            <span class="side-item-name">${itemData.name}</span>${indicator}
           `;
           item.onclick = () => handleSideItemClick(idx, itemData);
           break;
@@ -856,11 +864,10 @@
           item.className = 'side-item file-item' + (isSelected ? ' selected' : '');
           item.dataset.type = 'file';
           item.dataset.path = itemData.path;
-          item.style.paddingLeft = `${8 + itemData.depth * 12}px`;
+          item.style.paddingLeft = `${20 + itemData.depth * 12}px`;
           item.innerHTML = `
             <span class="file-icon">&nbsp;</span>
-            <span class="side-item-name">${itemData.name}</span>
-            ${indicator}
+            <span class="side-item-name">${itemData.name}</span>${indicator}
           `;
           item.onclick = () => handleSideItemClick(idx, itemData);
           break;
@@ -879,43 +886,72 @@
 
       // Update selection
       SideListState.setSelectedIndex(idx);
+      playNotch();
 
-      switch (itemData.type) {
-        case ItemType.OBJECTIVE:
-          // Commit any current edit before switching objectives
-          commitEditInPlace();
-          selectedObjectiveIndex = itemData.index;
-          viewMode = 'objective';
-          selectedFilePath = null;
-          renderContentView();
-          updateSideListSelection();
-          break;
+      // Action to run after scroll completes
+      async function executeAction() {
+        switch (itemData.type) {
+          case ItemType.OBJECTIVE:
+            commitEditInPlace();
+            selectedObjectiveIndex = itemData.index;
+            viewMode = 'objective';
+            selectedFilePath = null;
+            renderContentView();
+            updateSideListSelection();
+            break;
 
-        case ItemType.ADD_OBJECTIVE:
-          startAddObjective();
-          break;
+          case ItemType.ADD_OBJECTIVE:
+            startAddObjective();
+            break;
 
-        case ItemType.FILES_HEADER:
-          // Toggle collapse/expand of FILES section
-          SideListState.toggleFolderSection();
-          await renderSideList();
-          break;
+          case ItemType.FILES_HEADER:
+            SideListState.toggleFolderSection();
+            await renderSideList();
+            break;
 
-        case ItemType.SET_FOLDER:
-          await pickFolder();
-          await renderSideList();
-          break;
+          case ItemType.SET_FOLDER:
+            await pickFolder();
+            await renderSideList();
+            break;
 
-        case ItemType.FOLDER:
-          // Toggle expand/collapse
-          SideListState.toggleExpanded(itemData.path);
-          await renderSideList();
-          break;
+          case ItemType.FOLDER:
+            SideListState.toggleExpanded(itemData.path);
+            await renderSideList();
+            break;
 
-        case ItemType.FILE:
-          await selectFile(itemData.path, itemData.name);
-          updateSideListSelection();
-          break;
+          case ItemType.FILE:
+            await selectFile(itemData.path, itemData.name);
+            updateSideListSelection();
+            break;
+        }
+      }
+
+      // Scroll clicked item to the 30vh snap line (fast animation)
+      const container = document.getElementById('side-list-items');
+      const items = container?.querySelectorAll('.side-item');
+      if (container && items && items[idx]) {
+        const snapOffset = window.innerHeight * 0.30;
+        const targetScroll = idx === 0 ? 0 : items[idx].offsetTop - snapOffset + container.offsetTop;
+        const startScroll = container.scrollTop;
+        const distance = targetScroll - startScroll;
+        const duration = 80; // ms - very fast
+        const startTime = performance.now();
+
+        function animateScroll(currentTime) {
+          const elapsed = currentTime - startTime;
+          const progress = Math.min(elapsed / duration, 1);
+          const eased = 1 - Math.pow(1 - progress, 2);
+          container.scrollTop = startScroll + distance * eased;
+          if (progress < 1) {
+            requestAnimationFrame(animateScroll);
+          } else {
+            executeAction(); // Run action after animation completes
+          }
+        }
+        requestAnimationFrame(animateScroll);
+      } else {
+        // No scroll needed, run action immediately
+        executeAction();
       }
     }
 
@@ -1566,6 +1602,40 @@
     }
 
     // ========================================
+    // NOTCH SOUND - Warm retro 80s camera tick
+    // ========================================
+    let audioCtx = null;
+    function playNotch() {
+      if (!audioCtx) audioCtx = new AudioContext();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      const t = audioCtx.currentTime;
+
+      // Warm mid tick - rounder, less harsh
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'sine';
+      osc.frequency.value = 1100;  // Lower = warmer
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      gain.gain.setValueAtTime(0.05, t);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.018);
+      osc.start(t);
+      osc.stop(t + 0.025);
+
+      // Deeper body thump
+      const thump = audioCtx.createOscillator();
+      const thumpGain = audioCtx.createGain();
+      thump.type = 'sine';
+      thump.frequency.value = 90;  // Deeper
+      thump.connect(thumpGain);
+      thumpGain.connect(audioCtx.destination);
+      thumpGain.gain.setValueAtTime(0.06, t);
+      thumpGain.gain.exponentialRampToValueAtTime(0.001, t + 0.035);
+      thump.start(t);
+      thump.stop(t + 0.04);
+    }
+
+    // ========================================
     // SCROLL-SNAP DIAL NAVIGATION
     // Items scroll naturally with snap, selection follows scroll position
     // ========================================
@@ -1609,6 +1679,7 @@
       if (selectedIndex !== SideListState.getSelectedIndex()) {
         // Update state
         SideListState.setSelectedIndex(selectedIndex);
+        playNotch();
 
         // Update visual selection
         items.forEach((item, idx) => {
@@ -1634,6 +1705,96 @@
     const sideListItems = document.getElementById('side-list-items');
     if (sideListItems) {
       sideListItems.addEventListener('scroll', updateSelectionFromScroll, { passive: true });
+    }
+
+    // ========================================
+    // WHEEL EVENT - VELOCITY-BASED SMOOTH SCROLLING
+    // Slow = precise one item, Fast = accelerated multi-item
+    // ========================================
+    let wheelDelta = 0;
+    let lastWheelTime = 0;
+    let velocity = 0;
+
+    // Tuning parameters
+    const BASE_THRESHOLD = 80;      // Base pixels needed for slow scroll
+    const MIN_THRESHOLD = 20;       // Minimum threshold at max speed
+    const VELOCITY_DECAY = 0.85;    // How fast velocity decays
+    const VELOCITY_SCALE = 0.3;     // How much each scroll adds to velocity
+
+    if (sideListItems) {
+      sideListItems.addEventListener('wheel', (e) => {
+        e.preventDefault();
+
+        const SideListState = window.Objectiv?.SideListState;
+        if (!SideListState) return;
+
+        const items = sideListItems.querySelectorAll('.side-item');
+        if (!items.length) return;
+
+        const now = performance.now();
+        const timeDelta = now - lastWheelTime;
+        lastWheelTime = now;
+
+        // Decay velocity over time, then add new input
+        if (timeDelta > 200) {
+          velocity = 0; // Reset if pause in scrolling
+        } else {
+          velocity *= VELOCITY_DECAY;
+        }
+        velocity += Math.abs(e.deltaY) * VELOCITY_SCALE;
+
+        // Calculate dynamic threshold based on velocity
+        // Higher velocity = lower threshold = faster scrolling
+        const velocityFactor = Math.min(velocity / 100, 1); // 0 to 1
+        const threshold = BASE_THRESHOLD - (BASE_THRESHOLD - MIN_THRESHOLD) * velocityFactor;
+
+        // Accumulate delta
+        wheelDelta += e.deltaY;
+
+        // Check if we've scrolled enough to change selection
+        if (Math.abs(wheelDelta) >= threshold) {
+          const direction = wheelDelta > 0 ? 1 : -1;
+          wheelDelta = 0; // Reset accumulator
+
+          const currentIdx = SideListState.getSelectedIndex();
+          const newIdx = Math.max(0, Math.min(currentIdx + direction, items.length - 1));
+
+          if (newIdx !== currentIdx && items[newIdx]) {
+            // Update selection
+            SideListState.setSelectedIndex(newIdx);
+            playNotch();
+            items.forEach((item, idx) => {
+              item.classList.toggle('selected', idx === newIdx);
+            });
+
+            // Scroll the item to the 30vh snap line (not to top of container)
+            const scrollBehavior = velocity > 50 ? 'auto' : 'smooth';
+            const snapOffset = window.innerHeight * 0.30;
+
+            if (newIdx === 0) {
+              sideListItems.scrollTo({ top: 0, behavior: scrollBehavior });
+            } else {
+              // Calculate scroll position to put item at snap line
+              const itemTop = items[newIdx].offsetTop;
+              const targetScroll = itemTop - snapOffset + sideListItems.offsetTop;
+              sideListItems.scrollTo({ top: targetScroll, behavior: scrollBehavior });
+            }
+
+            // Update content view
+            const selectedItem = SideListState.getSelectedItem();
+            if (selectedItem) {
+              if (selectedItem.type === SideListState.ItemType.OBJECTIVE) {
+                selectedObjectiveIndex = selectedItem.index;
+                viewMode = 'objective';
+                selectedFilePath = null;
+                renderContentView();
+              } else if (selectedItem.type === SideListState.ItemType.FILE) {
+                selectFile(selectedItem.path, selectedItem.name);
+              }
+            }
+          }
+        }
+      }, { passive: false });
     }
 
     // ========================================
@@ -1957,6 +2118,7 @@
       const moved = direction > 0 ? SideListState.selectNext() : SideListState.selectPrev();
       if (!moved) return;
 
+      playNotch();
       const item = SideListState.getSelectedItem();
       const ItemType = SideListState.ItemType;
 

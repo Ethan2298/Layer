@@ -265,7 +265,7 @@ body.browser-mode #intro {
 }
 
 .side-item-name {
-  flex: 1;
+  flex: 0 1 auto;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -289,11 +289,13 @@ body.browser-mode #intro {
 
 .side-item-indicator {
   display: none;
+  color: #0891b2;
+  margin-left: 6px;
+  flex-shrink: 0;
 }
 
-.side-item.selected .side-item-name::after {
-  content: ' ●';
-  color: #0891b2;
+.side-item.selected .side-item-indicator {
+  display: block;
 }
 
 /* ========================================
@@ -583,7 +585,6 @@ body.browser-mode #intro {
 .side-item.files-header {
   margin-top: 12px;
   padding-top: 8px;
-  border-top: 1px solid #222;
   color: #555;
   font-size: 11px;
   text-transform: uppercase;
@@ -605,13 +606,14 @@ body.browser-mode #intro {
   display: inline-block;
 }
 
-.folder-icon {
-  width: 16px;
-  margin-right: 4px;
-  font-size: 12px;
-  display: inline-block;
+svg.folder-icon {
+  width: 14px;
+  height: 14px;
+  margin-right: 6px;
   flex-shrink: 0;
-  text-align: center;
+  vertical-align: middle;
+  stroke: #666;
+  stroke-width: 1.25;
 }
 
 .folder-path {
@@ -629,6 +631,7 @@ body.browser-mode #intro {
 /* Folder items */
 .side-item.folder-item {
   color: #888;
+  padding-left: 20px;
 }
 
 .side-item.folder-item:hover {
@@ -646,6 +649,7 @@ body.browser-mode #intro {
 /* File items */
 .side-item.file-item {
   color: #666;
+  padding-left: 20px;
 }
 
 .side-item.file-item:hover {
