@@ -30,10 +30,9 @@
 
     <!-- Main App - Split Pane -->
     <div id="app">
-      <!-- Side List (1/3) -->
+      <!-- Side List (1/3) - Unified scrollable area -->
       <div id="side-list">
         <div id="side-list-items"></div>
-        <div id="folder-explorer"></div>
       </div>
 
       <!-- Content View (2/3) -->
@@ -735,89 +734,267 @@
     // SPLIT-PANE RENDERING
     // ========================================
 
-    // Render the side list (objectives with ball indicator)
-    function renderSideList() {
+    // Render the unified side list (objectives + folder explorer)
+    async function renderSideList() {
       const container = document.getElementById('side-list-items');
       container.innerHTML = '';
 
-      data.objectives.forEach((obj, index) => {
-        const isEditing = promptMode === 'add' && promptTargetSection === 'objectives' && promptTargetIndex === index;
-
-        const item = document.createElement('div');
-        item.className = 'side-item' + (index === selectedObjectiveIndex ? ' selected' : '');
-        item.dataset.index = index;
-
-        if (isEditing) {
-          // Inline edit mode
-          item.innerHTML = `
-            <span class="side-item-name" contenteditable="true" data-placeholder="Name your objective"></span>
-          `;
-          item.style.color = '#0891b2';
-        } else {
-          item.innerHTML = `
-            <span class="side-item-name">${obj.name}</span>
-            <span class="side-item-indicator">●</span>
-          `;
-          item.onclick = () => {
-            selectObjective(index);
-          };
-        }
-        container.appendChild(item);
-      });
-
-      // Add option at bottom if not currently adding
-      if (!(promptMode === 'add' && promptTargetSection === 'objectives')) {
-        const addItem = document.createElement('div');
-        addItem.className = 'side-item add-option';
-        addItem.innerHTML = '<span class="side-item-name">+ Add objective</span>';
-        addItem.onclick = () => startAddObjective();
-        container.appendChild(addItem);
-      }
-    }
-
-    // Render the folder explorer
-    function renderFolderExplorer() {
-      const container = document.getElementById('folder-explorer');
-      if (!container) return;
-
-      // Check if module is loaded
-      const FolderExplorer = window.Objectiv?.FolderExplorer;
-      if (!FolderExplorer) {
-        // Not ready yet, will be called again
+      const SideListState = window.Objectiv?.SideListState;
+      if (!SideListState) {
+        // Module not ready, fall back to basic render
+        renderSideListBasic(container);
         return;
       }
 
-      FolderExplorer.render(container, {
-        onFileSelect: (item) => {
-          console.log('File selected:', item.path);
-          showMessage(`Selected: ${item.name}`);
-          // Future: open file in content area
-        },
-        onFolderSelect: (item) => {
-          console.log('Folder selected:', item.path);
-        }
+      // Build the unified list of navigable items
+      const isAddingObjective = promptMode === 'add' && promptTargetSection === 'objectives';
+      await SideListState.rebuildItems({
+        objectives: data.objectives,
+        getFolderContents: getFolderContents,
+        isAddingObjective
       });
+
+      const items = SideListState.getItems();
+      const selectedIdx = SideListState.getSelectedIndex();
+
+      // Render each item from the unified list
+      items.forEach((itemData, idx) => {
+        const isSelected = idx === selectedIdx;
+        const element = createSideListItem(itemData, idx, isSelected);
+        container.appendChild(element);
+      });
+
+      // Scroll selected into view
+      const selectedEl = container.querySelector('.side-item.selected');
+      if (selectedEl) {
+        selectedEl.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      }
     }
 
-    // Select objective without re-rendering side list
-    function selectObjective(index) {
-      // Commit any current edit before switching objectives
-      commitEditInPlace();
+    // Create a side list item element based on type
+    function createSideListItem(itemData, idx, isSelected) {
+      const SideListState = window.Objectiv?.SideListState;
+      const ItemType = SideListState?.ItemType || {};
 
-      if (index === selectedObjectiveIndex) return;
+      const item = document.createElement('div');
+      item.className = 'side-item' + (isSelected ? ' selected' : '');
+      item.dataset.idx = idx;
 
-      // Update selection classes and scroll into view
-      const items = document.querySelectorAll('#side-list-items .side-item:not(.add-option)');
-      items.forEach((item, i) => {
-        if (i === index) {
+      // Selection indicator (always rendered, CSS controls visibility via .selected)
+      const indicator = '<span class="side-item-indicator">●</span>';
+
+      switch (itemData.type) {
+        case ItemType.OBJECTIVE:
+          const isEditing = promptMode === 'add' && promptTargetSection === 'objectives' && promptTargetIndex === itemData.index;
+          item.dataset.type = 'objective';
+          item.dataset.objIndex = itemData.index;
+
+          if (isEditing) {
+            item.innerHTML = `
+              <span class="side-item-name" contenteditable="true" data-placeholder="Name your objective"></span>
+            `;
+            item.style.color = '#0891b2';
+          } else {
+            item.innerHTML = `
+              <span class="side-item-name">${itemData.name}</span>
+              ${indicator}
+            `;
+            item.onclick = () => handleSideItemClick(idx, itemData);
+          }
+          break;
+
+        case ItemType.ADD_OBJECTIVE:
+          item.className = 'side-item add-option' + (isSelected ? ' selected' : '');
+          item.dataset.type = 'add-objective';
+          item.innerHTML = `<span class="side-item-name">+ Add objective</span>${indicator}`;
+          item.onclick = () => handleSideItemClick(idx, itemData);
+          break;
+
+        case ItemType.FILES_HEADER:
+          item.className = 'side-item files-header';
+          item.dataset.type = 'files-header';
+          item.innerHTML = `
+            <span class="folder-toggle">${itemData.isCollapsed ? '>' : 'v'}</span>
+            <span class="side-item-name">FILES</span>
+            ${itemData.rootPath ? `<span class="folder-path" title="${itemData.rootPath}">${getShortPath(itemData.rootPath)}</span>` : ''}
+          `;
+          item.onclick = () => handleSideItemClick(idx, itemData);
+          break;
+
+        case ItemType.SET_FOLDER:
+          item.className = 'side-item add-option' + (isSelected ? ' selected' : '');
+          item.dataset.type = 'set-folder';
+          item.innerHTML = `<span class="side-item-name">+ Set folder</span>${indicator}`;
+          item.onclick = () => handleSideItemClick(idx, itemData);
+          break;
+
+        case ItemType.FOLDER:
+          item.className = 'side-item folder-item' + (isSelected ? ' selected' : '');
+          item.dataset.type = 'folder';
+          item.dataset.path = itemData.path;
+          item.style.paddingLeft = `${8 + itemData.depth * 12}px`;
+          item.innerHTML = `
+            <span class="folder-toggle">${itemData.isExpanded ? 'v' : '>'}</span>
+            <span class="side-item-name">${itemData.name}</span>
+            ${indicator}
+          `;
+          item.onclick = () => handleSideItemClick(idx, itemData);
+          break;
+
+        case ItemType.FILE:
+          item.className = 'side-item file-item' + (isSelected ? ' selected' : '');
+          item.dataset.type = 'file';
+          item.dataset.path = itemData.path;
+          item.style.paddingLeft = `${8 + itemData.depth * 12}px`;
+          item.innerHTML = `
+            <span class="file-icon">&nbsp;</span>
+            <span class="side-item-name">${itemData.name}</span>
+            ${indicator}
+          `;
+          item.onclick = () => handleSideItemClick(idx, itemData);
+          break;
+
+        default:
+          item.innerHTML = `<span class="side-item-name">${itemData.name || '?'}</span>`;
+      }
+
+      return item;
+    }
+
+    // Handle click on side list item
+    async function handleSideItemClick(idx, itemData) {
+      const SideListState = window.Objectiv?.SideListState;
+      const ItemType = SideListState?.ItemType || {};
+
+      // Update selection
+      SideListState.setSelectedIndex(idx);
+
+      switch (itemData.type) {
+        case ItemType.OBJECTIVE:
+          // Commit any current edit before switching objectives
+          commitEditInPlace();
+          selectedObjectiveIndex = itemData.index;
+          renderContentView();
+          updateSideListSelection();
+          break;
+
+        case ItemType.ADD_OBJECTIVE:
+          startAddObjective();
+          break;
+
+        case ItemType.FILES_HEADER:
+          // Toggle collapse/expand of FILES section
+          SideListState.toggleFolderSection();
+          await renderSideList();
+          break;
+
+        case ItemType.SET_FOLDER:
+          await pickFolder();
+          await renderSideList();
+          break;
+
+        case ItemType.FOLDER:
+          // Toggle expand/collapse
+          SideListState.toggleExpanded(itemData.path);
+          await renderSideList();
+          break;
+
+        case ItemType.FILE:
+          showMessage(`Selected: ${itemData.name}`);
+          updateSideListSelection();
+          // Future: open file in content area
+          break;
+      }
+    }
+
+    // Update visual selection without full re-render
+    function updateSideListSelection() {
+      const SideListState = window.Objectiv?.SideListState;
+      if (!SideListState) return;
+
+      const selectedIdx = SideListState.getSelectedIndex();
+      // Select ALL side items (they all have data-idx)
+      const items = document.querySelectorAll('#side-list-items .side-item[data-idx]');
+
+      items.forEach((item) => {
+        const idx = parseInt(item.dataset.idx, 10);
+        if (idx === selectedIdx) {
           item.classList.add('selected');
           item.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
         } else {
           item.classList.remove('selected');
         }
       });
+    }
+
+    // Get folder contents (cached via FolderExplorer)
+    async function getFolderContents(dirPath) {
+      const FolderExplorer = window.Objectiv?.FolderExplorer;
+      if (!FolderExplorer) return [];
+      return await FolderExplorer.loadDirectory(dirPath);
+    }
+
+    // Pick folder using system dialog
+    async function pickFolder() {
+      if (!window.electronAPI?.folderExplorer) {
+        showMessage('Not available in browser mode');
+        return null;
+      }
+      const folderPath = await window.electronAPI.folderExplorer.pickFolder();
+      if (folderPath) {
+        const SideListState = window.Objectiv?.SideListState;
+        if (SideListState) {
+          SideListState.setRootPath(folderPath);
+        }
+      }
+      return folderPath;
+    }
+
+    // Get shortened path for display
+    function getShortPath(fullPath) {
+      if (!fullPath) return '';
+      const parts = fullPath.split('/').filter(Boolean);
+      if (parts.length <= 2) return fullPath;
+      return '.../' + parts.slice(-2).join('/');
+    }
+
+    // Basic fallback render (when modules not ready)
+    function renderSideListBasic(container) {
+      data.objectives.forEach((obj, index) => {
+        const item = document.createElement('div');
+        item.className = 'side-item' + (index === selectedObjectiveIndex ? ' selected' : '');
+        item.innerHTML = `
+          <span class="side-item-name">${obj.name}</span>
+          <span class="side-item-indicator">●</span>
+        `;
+        item.onclick = () => {
+          selectedObjectiveIndex = index;
+          updateView();
+        };
+        container.appendChild(item);
+      });
+    }
+
+    // Legacy: renderFolderExplorer is now integrated into renderSideList
+    function renderFolderExplorer() {
+      // No longer needed - folder explorer is part of unified side list
+    }
+
+    // Select objective by index (uses unified navigation state)
+    function selectObjective(index) {
+      // Commit any current edit before switching objectives
+      commitEditInPlace();
+
+      if (index === selectedObjectiveIndex) return;
+
+      // Update unified state to select this objective
+      const SideListState = window.Objectiv?.SideListState;
+      if (SideListState) {
+        SideListState.selectItem(SideListState.ItemType.OBJECTIVE, index);
+      }
 
       selectedObjectiveIndex = index;
+      updateSideListSelection();
       renderContentView();
     }
 
@@ -1030,10 +1207,9 @@
     }
 
     // Main update function
-    function updateView() {
-      renderSideList();
+    async function updateView() {
+      await renderSideList();
       renderContentView();
-      renderFolderExplorer();
       focusPromptInput();
       updateStatusBar();
     }
@@ -1318,9 +1494,6 @@
       if (promptMode) return;
       e.preventDefault();
 
-      const maxIndex = data.objectives.length - 1;
-      if (maxIndex < 0) return;
-
       // Mac: accumulate delta; Windows/Linux: respond immediately
       if (SCROLL_THRESHOLD > 0) {
         scrollAccumulator += e.deltaY;
@@ -1332,21 +1505,17 @@
 
         if (scrollAccumulator > SCROLL_THRESHOLD) {
           scrollAccumulator = 0;
-          if (selectedObjectiveIndex < maxIndex) {
-            selectObjective(selectedObjectiveIndex + 1);
-          }
+          navigateSideList(1);  // Down
         } else if (scrollAccumulator < -SCROLL_THRESHOLD) {
           scrollAccumulator = 0;
-          if (selectedObjectiveIndex > 0) {
-            selectObjective(selectedObjectiveIndex - 1);
-          }
+          navigateSideList(-1);  // Up
         }
       } else {
         // Immediate response for mice
-        if (e.deltaY > 0 && selectedObjectiveIndex < maxIndex) {
-          selectObjective(selectedObjectiveIndex + 1);
-        } else if (e.deltaY < 0 && selectedObjectiveIndex > 0) {
-          selectObjective(selectedObjectiveIndex - 1);
+        if (e.deltaY > 0) {
+          navigateSideList(1);  // Down
+        } else if (e.deltaY < 0) {
+          navigateSideList(-1);  // Up
         }
       }
     }, { passive: false });
@@ -1617,23 +1786,25 @@
         return;
       }
 
-      const maxIndex = data.objectives.length - 1;
+      const SideListState = window.Objectiv?.SideListState;
+      const ItemType = SideListState?.ItemType || {};
 
       switch (e.key) {
         case 'ArrowUp':
         case 'k':
           e.preventDefault();
-          if (selectedObjectiveIndex > 0) {
-            selectObjective(selectedObjectiveIndex - 1);
-          }
+          navigateSideList(-1);
           break;
 
         case 'ArrowDown':
         case 'j':
           e.preventDefault();
-          if (selectedObjectiveIndex < maxIndex) {
-            selectObjective(selectedObjectiveIndex + 1);
-          }
+          navigateSideList(1);
+          break;
+
+        case 'Enter':
+          e.preventDefault();
+          activateSelectedItem();
           break;
 
         case 'a':
@@ -1655,14 +1826,74 @@
         case 'f':
           e.preventDefault();
           // Open folder picker for file explorer
-          if (window.Objectiv?.FolderExplorer) {
-            window.Objectiv.FolderExplorer.pickFolder().then(() => {
-              renderFolderExplorer();
-            });
-          }
+          pickFolder().then(() => {
+            renderSideList();
+          });
           break;
       }
     });
+
+    // Navigate side list up/down
+    async function navigateSideList(direction) {
+      const SideListState = window.Objectiv?.SideListState;
+      if (!SideListState) return;
+
+      const moved = direction > 0 ? SideListState.selectNext() : SideListState.selectPrev();
+      if (!moved) return;
+
+      const item = SideListState.getSelectedItem();
+      const ItemType = SideListState.ItemType;
+
+      // If navigated to an objective, update the content view
+      if (item && item.type === ItemType.OBJECTIVE) {
+        selectedObjectiveIndex = item.index;
+        renderContentView();
+      }
+
+      updateSideListSelection();
+    }
+
+    // Activate (Enter) the selected item
+    async function activateSelectedItem() {
+      const SideListState = window.Objectiv?.SideListState;
+      if (!SideListState) return;
+
+      const item = SideListState.getSelectedItem();
+      const ItemType = SideListState.ItemType;
+      if (!item) return;
+
+      switch (item.type) {
+        case ItemType.OBJECTIVE:
+          // Already selected, maybe start editing?
+          break;
+
+        case ItemType.ADD_OBJECTIVE:
+          startAddObjective();
+          break;
+
+        case ItemType.FILES_HEADER:
+          // Toggle collapse/expand
+          SideListState.toggleFolderSection();
+          await renderSideList();
+          break;
+
+        case ItemType.SET_FOLDER:
+          await pickFolder();
+          await renderSideList();
+          break;
+
+        case ItemType.FOLDER:
+          // Toggle expand/collapse
+          SideListState.toggleExpanded(item.path);
+          await renderSideList();
+          break;
+
+        case ItemType.FILE:
+          showMessage(`Selected: ${item.name}`);
+          // Future: open in content area
+          break;
+      }
+    }
 
     // Edit button click handler (event delegation)
     document.getElementById('content-body').addEventListener('click', (e) => {

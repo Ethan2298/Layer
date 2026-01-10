@@ -12,6 +12,7 @@
 import * as Repository from './data/repository.js';
 import * as SupabaseSync from './data/supabase-sync.js';
 import * as State from './state/store.js';
+import * as SideListState from './state/side-list-state.js';
 import * as Utils from './utils.js';
 import * as Clarity from './clarity.js';
 import * as ListItem from './components/list-item.js';
@@ -27,6 +28,7 @@ window.Objectiv = {
   Repository,
   SupabaseSync,
   State,
+  SideListState,
   Utils,
   Clarity,
   ListItem,
@@ -52,7 +54,10 @@ export function init() {
     }
   });
 
-  // Initialize folder explorer
+  // Initialize side list state (unified navigation)
+  SideListState.init();
+
+  // Initialize folder explorer (legacy, will be merged)
   FolderExplorer.init();
 }
 
@@ -70,6 +75,7 @@ if (document.readyState === 'loading') {
 export {
   Repository,
   State,
+  SideListState,
   Utils,
   Clarity,
   ListItem,
@@ -80,6 +86,7 @@ export {
 export default {
   Repository,
   State,
+  SideListState,
   Utils,
   Clarity,
   ListItem,
