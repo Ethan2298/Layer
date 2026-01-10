@@ -33,6 +33,7 @@
       <!-- Side List (1/3) -->
       <div id="side-list">
         <div id="side-list-items"></div>
+        <div id="folder-explorer"></div>
       </div>
 
       <!-- Content View (2/3) -->
@@ -47,7 +48,7 @@
 
     <!-- Status Bar -->
     <div id="status-bar">
-      <div id="shortcuts">[↑↓/Scroll] Navigate  [a] Add  [s] Step  [i] Inspect</div>
+      <div id="shortcuts">[↑↓] Navigate  [a] Add  [s] Step  [f] Folder</div>
     </div>
 
     <!-- Message Toast -->
@@ -774,6 +775,30 @@
       }
     }
 
+    // Render the folder explorer
+    function renderFolderExplorer() {
+      const container = document.getElementById('folder-explorer');
+      if (!container) return;
+
+      // Check if module is loaded
+      const FolderExplorer = window.Objectiv?.FolderExplorer;
+      if (!FolderExplorer) {
+        // Not ready yet, will be called again
+        return;
+      }
+
+      FolderExplorer.render(container, {
+        onFileSelect: (item) => {
+          console.log('File selected:', item.path);
+          showMessage(`Selected: ${item.name}`);
+          // Future: open file in content area
+        },
+        onFolderSelect: (item) => {
+          console.log('Folder selected:', item.path);
+        }
+      });
+    }
+
     // Select objective without re-rendering side list
     function selectObjective(index) {
       // Commit any current edit before switching objectives
@@ -1008,6 +1033,7 @@
     function updateView() {
       renderSideList();
       renderContentView();
+      renderFolderExplorer();
       focusPromptInput();
       updateStatusBar();
     }
@@ -1625,6 +1651,16 @@
         case 'q':
           showMessage('session ended.');
           break;
+
+        case 'f':
+          e.preventDefault();
+          // Open folder picker for file explorer
+          if (window.Objectiv?.FolderExplorer) {
+            window.Objectiv.FolderExplorer.pickFolder().then(() => {
+              renderFolderExplorer();
+            });
+          }
+          break;
       }
     });
 
@@ -1654,7 +1690,7 @@
       if (promptMode) {
         shortcuts = '[Enter] Confirm  [Esc] Cancel';
       } else {
-        shortcuts = '[↑↓/Scroll] Navigate  [a] Add objective  [s] Log step';
+        shortcuts = '[↑↓] Navigate  [a] Add  [s] Step  [f] Folder';
       }
       document.getElementById('shortcuts').textContent = shortcuts;
     }

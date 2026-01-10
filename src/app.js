@@ -16,6 +16,7 @@ import * as Utils from './utils.js';
 import * as Clarity from './clarity.js';
 import * as ListItem from './components/list-item.js';
 import * as EditController from './controllers/edit-controller.js';
+import * as FolderExplorer from './components/folder-explorer.js';
 
 // ========================================
 // Re-export for global access
@@ -29,7 +30,8 @@ window.Objectiv = {
   Utils,
   Clarity,
   ListItem,
-  EditController
+  EditController,
+  FolderExplorer
 };
 
 // ========================================
@@ -49,6 +51,9 @@ export function init() {
       window.updateView();
     }
   });
+
+  // Initialize folder explorer
+  FolderExplorer.init();
 }
 
 // Auto-initialize when DOM is ready
@@ -68,7 +73,8 @@ export {
   Utils,
   Clarity,
   ListItem,
-  EditController
+  EditController,
+  FolderExplorer
 };
 
 export default {
@@ -78,5 +84,6 @@ export default {
   Clarity,
   ListItem,
   EditController,
+  FolderExplorer,
   init
 };

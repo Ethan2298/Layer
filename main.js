@@ -1,6 +1,7 @@
-const { app, BrowserWindow, ipcMain } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const path = require('path');
 const fs = require('fs');
+const os = require('os');
 
 // Load .env file if it exists
 const envPath = path.join(__dirname, '.env');
@@ -113,6 +114,76 @@ function createWindow() {
   // Clarity scoring with LLM
   ipcMain.handle('calculate-clarity', async (event, name, description) => {
     return await calculateClarityWithLLM(name, description);
+  });
+
+  // ========================================
+  // Folder Explorer - Filesystem Handlers
+  // ========================================
+
+  // Open folder picker dialog
+  ipcMain.handle('folder-explorer:pick-folder', async () => {
+    const result = await dialog.showOpenDialog(win, {
+      properties: ['openDirectory'],
+      title: 'Select Folder to Explore'
+    });
+    if (result.canceled || result.filePaths.length === 0) {
+      return null;
+    }
+    return result.filePaths[0];
+  });
+
+  // Read directory contents
+  ipcMain.handle('folder-explorer:read-dir', async (event, dirPath) => {
+    try {
+      const entries = fs.readdirSync(dirPath, { withFileTypes: true });
+      const items = entries
+        .filter(entry => !entry.name.startsWith('.')) // Hide dotfiles
+        .map(entry => ({
+          name: entry.name,
+          path: path.join(dirPath, entry.name),
+          isDirectory: entry.isDirectory(),
+          isFile: entry.isFile()
+        }))
+        .sort((a, b) => {
+          // Directories first, then files, alphabetically
+          if (a.isDirectory && !b.isDirectory) return -1;
+          if (!a.isDirectory && b.isDirectory) return 1;
+          return a.name.localeCompare(b.name);
+        });
+      return { success: true, items };
+    } catch (err) {
+      return { success: false, error: err.message };
+    }
+  });
+
+  // Get home directory
+  ipcMain.handle('folder-explorer:get-home', () => {
+    return os.homedir();
+  });
+
+  // Check if path exists
+  ipcMain.handle('folder-explorer:exists', async (event, filePath) => {
+    return fs.existsSync(filePath);
+  });
+
+  // Get path info
+  ipcMain.handle('folder-explorer:get-info', async (event, filePath) => {
+    try {
+      const stats = fs.statSync(filePath);
+      return {
+        success: true,
+        info: {
+          path: filePath,
+          name: path.basename(filePath),
+          isDirectory: stats.isDirectory(),
+          isFile: stats.isFile(),
+          size: stats.size,
+          modified: stats.mtime
+        }
+      };
+    } catch (err) {
+      return { success: false, error: err.message };
+    }
   });
 }
 
