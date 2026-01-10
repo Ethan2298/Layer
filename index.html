@@ -1539,20 +1539,10 @@
       }
     }
 
-    // Listen for scroll snap changes (modern browsers)
+    // Listen for scroll - update selection live as user scrolls
     const sideListItems = document.getElementById('side-list-items');
     if (sideListItems) {
-      // Use scrollsnapchange if available, otherwise fall back to scroll + debounce
-      if ('onscrollsnapchange' in window) {
-        sideListItems.addEventListener('scrollsnapchange', updateSelectionFromScroll);
-      } else {
-        // Fallback: debounced scroll handler
-        let scrollTimeout;
-        sideListItems.addEventListener('scroll', () => {
-          clearTimeout(scrollTimeout);
-          scrollTimeout = setTimeout(updateSelectionFromScroll, 50);
-        }, { passive: true });
-      }
+      sideListItems.addEventListener('scroll', updateSelectionFromScroll, { passive: true });
     }
 
     // ========================================
