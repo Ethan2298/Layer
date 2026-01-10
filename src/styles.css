@@ -293,7 +293,6 @@ body.browser-mode #intro {
 .side-item.selected .side-item-name::after {
   content: ' ●';
   color: #0891b2;
-  font-size: 8px;
 }
 
 /* ========================================
