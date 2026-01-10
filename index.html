@@ -1510,16 +1510,21 @@
       // Find the next item at/below the snap line (the one coming into view)
       let selectedIndex = 0;
 
-      for (let idx = 0; idx < items.length; idx++) {
-        const itemRect = items[idx].getBoundingClientRect();
+      // If at top of scroll, select first item
+      if (container.scrollTop <= 5) {
+        selectedIndex = 0;
+      } else {
+        for (let idx = 0; idx < items.length; idx++) {
+          const itemRect = items[idx].getBoundingClientRect();
 
-        // Select the first item whose top is at or below the snap line
-        if (itemRect.top >= snapLineY) {
+          // Select the first item whose top is at or below the snap line
+          if (itemRect.top >= snapLineY - 5) {
+            selectedIndex = idx;
+            break;
+          }
+          // If we pass the snap line, keep this as fallback
           selectedIndex = idx;
-          break;
         }
-        // If we pass the snap line, keep this as fallback
-        selectedIndex = idx;
       }
 
       if (selectedIndex !== SideListState.getSelectedIndex()) {
