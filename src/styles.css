@@ -357,6 +357,11 @@ body.browser-mode #intro {
   text-align: left;
 }
 
+.list-item-icon:empty {
+  min-width: 0;
+  display: none;
+}
+
 .list-item-icon.editing {
   color: #0891b2;
 }

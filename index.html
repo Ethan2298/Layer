@@ -825,8 +825,8 @@
         }
 
         const listItem = createListItem({
-          icon: isInEditMode ? '>' : '-',
-          iconClass: isInEditMode ? 'editing' : '',
+          icon: '',
+          iconClass: '',
           content: textContent,
           contentEditable: isInEditMode,
           meta: clarityMeta,
@@ -895,13 +895,12 @@
         const isEditing = promptMode === 'edit' && promptTargetSection === 'steps' && promptTargetIndex === actualIdx;
         const isInEditMode = isAdding || isEditing;
 
-        const stepMeta = `#${orderNum} ${timestamp}`;
         const listItem = createListItem({
-          icon: isInEditMode ? '>' : '-',
-          iconClass: isInEditMode ? 'editing' : '',
+          icon: orderNum.toString(),
+          iconClass: '',
           content: step.name,
           contentEditable: isInEditMode,
-          meta: `<span class="step-timestamp">${stepMeta}</span>`,
+          meta: `<span class="step-timestamp">${timestamp}</span>`,
           metaClass: 'compact',
           selected: false
         });
@@ -1357,14 +1356,6 @@
     function restoreElementInPlace(contentEditable, listItem, text) {
       contentEditable.removeAttribute('contenteditable');
       contentEditable.textContent = text;
-
-      if (listItem) {
-        const iconSpan = listItem.querySelector('.list-item-icon');
-        if (iconSpan) {
-          iconSpan.textContent = '-';
-          iconSpan.classList.remove('editing');
-        }
-      }
     }
 
     /**
@@ -1405,13 +1396,6 @@
 
       // Make element editable
       contentSpan.setAttribute('contenteditable', 'true');
-
-      // Update icon
-      const iconSpan = listItemEl.querySelector('.list-item-icon');
-      if (iconSpan) {
-        iconSpan.textContent = '>';
-        iconSpan.classList.add('editing');
-      }
 
       // Focus and place cursor at end
       contentSpan.focus();
