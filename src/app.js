@@ -10,6 +10,7 @@
 // ========================================
 
 import * as Repository from './data/repository.js';
+import * as SupabaseSync from './data/supabase-sync.js';
 import * as State from './state/store.js';
 import * as Utils from './utils.js';
 import * as Clarity from './clarity.js';
@@ -23,6 +24,7 @@ import * as EditController from './controllers/edit-controller.js';
 // Make modules available globally for gradual migration
 window.Objectiv = {
   Repository,
+  SupabaseSync,
   State,
   Utils,
   Clarity,

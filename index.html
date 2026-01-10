@@ -87,9 +87,17 @@
       const container = document.getElementById('status-items');
       if (!container) return;
 
+      // Get cloud sync status
+      const syncStatus = window.Objectiv?.SupabaseSync?.getSyncStatus?.() || { configured: false };
+      const cloudLabel = syncStatus.configured
+        ? (syncStatus.syncing ? 'syncing...' : 'connected')
+        : 'not configured';
+      const cloudStatus = syncStatus.configured ? 'ok' : 'warn';
+
       const items = [
         { label: 'Platform', value: systemStatus.platform, status: 'ok' },
         { label: 'Storage', value: systemStatus.localStorage ? 'ok' : 'failed', status: systemStatus.localStorage ? 'ok' : 'err' },
+        { label: 'Cloud Sync', value: cloudLabel, status: cloudStatus },
         { label: 'Taglines', value: systemStatus.taglines ? 'loaded' : 'fallback', status: systemStatus.taglines ? 'ok' : 'warn' },
         { label: 'Clarity AI', value: systemStatus.clarityAPI ? 'ready' : 'unavailable', status: systemStatus.clarityAPI ? 'ok' : 'warn' }
       ];
@@ -160,6 +168,33 @@
     // Data
     const STORAGE_KEY = 'objectiv-data';
     let data = loadData();
+
+    // Cloud sync initialization (non-blocking)
+    // Runs after local data loads, checks cloud for newer data
+    async function initCloudSync() {
+      if (!window.Objectiv?.SupabaseSync?.pullFromCloud) {
+        console.log('☁️ Cloud sync not available (module not loaded)');
+        return;
+      }
+      try {
+        const cloudData = await window.Objectiv.SupabaseSync.pullFromCloud();
+        if (cloudData && cloudData.objectives) {
+          // Cloud has data - use it
+          console.log('☁️ Loaded', cloudData.objectives.length, 'objectives from cloud');
+          data = cloudData;
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+          if (window.updateView) updateView();
+        } else if (data.objectives && data.objectives.length > 0) {
+          // No cloud data but we have local - push it up (first sync)
+          console.log('☁️ First sync: pushing local data to cloud');
+          window.Objectiv.SupabaseSync.pushToCloud(data);
+        }
+      } catch (e) {
+        console.warn('☁️ Cloud init failed:', e);
+      }
+    }
+    // Run after a short delay to let modules load
+    setTimeout(initCloudSync, 500);
 
     // Navigation state (simplified for split-pane)
     let selectedObjectiveIndex = 0;  // Which objective is selected in side list
@@ -302,9 +337,13 @@
       return { objectives: newObjectives };
     }
 
-    // Save data to localStorage
+    // Save data to localStorage + cloud sync
     function saveData() {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+      // Also sync to cloud (if Supabase is configured)
+      if (window.Objectiv?.SupabaseSync?.pushToCloud) {
+        window.Objectiv.SupabaseSync.pushToCloud(data);
+      }
     }
 
     // Generate unique ID

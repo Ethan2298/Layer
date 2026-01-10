@@ -2,9 +2,15 @@
  * Data Repository Module
  *
  * Environment-agnostic data persistence layer.
- * - Browser: Uses localStorage
- * - Electron: Uses file system via electronAPI (when available)
+ * - Primary: localStorage (fast, synchronous)
+ * - Secondary: Supabase cloud (async background sync)
+ *
+ * DATA FLOW:
+ * 1. On app start: Try cloud first, fall back to localStorage
+ * 2. On save: Save to localStorage immediately, then sync to cloud
  */
+
+import { pullFromCloud, pushToCloud } from './supabase-sync.js';
 
 const STORAGE_KEY = 'objectiv-data';
 
@@ -173,7 +179,47 @@ function ensureStructure(data) {
 // ========================================
 
 /**
- * Load data from storage
+ * Initialize data from cloud (async)
+ *
+ * Call this ONCE when app starts. It:
+ * 1. Tries to pull from Supabase
+ * 2. If cloud has data, uses that (and caches to localStorage)
+ * 3. If cloud is empty/unavailable, falls back to localStorage
+ *
+ * This ensures you always have the latest cloud data.
+ */
+export async function initializeFromCloud() {
+  try {
+    // Try to get data from Supabase
+    const cloudData = await pullFromCloud();
+
+    if (cloudData) {
+      // Cloud has data! Cache it locally and use it.
+      console.log('📥 Using cloud data');
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(cloudData));
+      return ensureStructure(cloudData);
+    }
+
+    // No cloud data - fall back to localStorage
+    console.log('📥 No cloud data, using local');
+    const localData = loadData();
+
+    // If we have local data, push it to cloud (first-time sync)
+    if (localData.objectives && localData.objectives.length > 0) {
+      console.log('📤 Pushing local data to cloud (first sync)');
+      pushToCloud(localData);
+    }
+
+    return localData;
+
+  } catch (e) {
+    console.warn('Cloud init failed, using local:', e);
+    return loadData();
+  }
+}
+
+/**
+ * Load data from storage (synchronous)
  * Uses localStorage in browser, file system in Electron
  */
 export function loadData() {
@@ -196,13 +242,24 @@ export function loadData() {
 
 /**
  * Save data to storage
+ *
+ * This does TWO things:
+ * 1. Saves to localStorage immediately (fast, synchronous)
+ * 2. Queues a cloud sync (async, debounced)
+ *
+ * The cloud sync is fire-and-forget - if it fails, data is still
+ * safe in localStorage.
  */
 export function saveData(data) {
+  // Step 1: Save locally (this is instant)
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
   } catch (e) {
     console.error('Failed to save data:', e);
   }
+
+  // Step 2: Sync to cloud (background, debounced)
+  pushToCloud(data);
 }
 
 /**
@@ -243,6 +300,7 @@ export function createStep(name = '', orderNumber = 1) {
 
 // Default export for convenience
 export default {
+  initializeFromCloud,
   loadData,
   saveData,
   generateId,

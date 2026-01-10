@@ -8,6 +8,7 @@
     "terminal": "node life.js"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.47.0",
     "blessed": "^0.1.81"
   },
   "devDependencies": {
