@@ -101,6 +101,12 @@ body.browser-mode #intro {
   color: #fff;
 }
 
+#btn-toggle-sidebar svg {
+  width: 14px !important;
+  height: 14px !important;
+  stroke: currentColor;
+}
+
 /* ========================================
    Status Reporter
    ======================================== */
@@ -221,6 +227,16 @@ body.browser-mode #intro {
   overflow: hidden;
 }
 
+#app.sidebar-collapsed #side-list {
+  margin-left: calc(-1 * var(--sidebar-width, 280px));
+  opacity: 0;
+}
+
+#app.sidebar-collapsed #content-view {
+  grid-column: 1 / -1;
+  grid-row: 1;
+}
+
 /* ========================================
    Side List (left sidebar)
    ======================================== */
@@ -235,20 +251,33 @@ body.browser-mode #intro {
   max-width: 500px;
   border-right: 1px solid var(--border);
   padding: 0 0 0 12px;
+  transition: margin-left 0.25s ease, opacity 0.25s ease;
 }
 
 #resize-handle {
   position: absolute;
   top: 0;
-  right: -3px;
-  width: 6px;
+  right: 0;
+  width: 16px;
   height: 100%;
   cursor: col-resize;
   z-index: 10;
+  background: transparent;
 }
 
-#resize-handle:hover,
-#resize-handle.dragging {
+#resize-handle::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: 0;
+  width: 2px;
+  height: 100%;
+  background: transparent;
+  transition: background 0.15s;
+}
+
+#resize-handle:hover::after,
+#resize-handle.dragging::after {
   background: var(--accent);
   opacity: 0.5;
 }
@@ -372,6 +401,7 @@ body.browser-mode #intro {
   min-width: 0;
   scrollbar-width: none;
   -ms-overflow-style: none;
+  transition: all 0.25s ease;
 }
 
 #content-view::-webkit-scrollbar {

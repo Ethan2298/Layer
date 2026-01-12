@@ -22,6 +22,7 @@
   <div id="titlebar">
     <div id="titlebar-title"></div>
     <div id="window-controls">
+      <button class="window-btn" id="btn-toggle-sidebar" title="Toggle sidebar"><i data-lucide="panel-left"></i></button>
       <button class="window-btn" id="btn-minimize">&#xE921;</button>
       <button class="window-btn" id="btn-maximize">&#xE922;</button>
       <button class="window-btn close" id="btn-close">&#xE8BB;</button>
@@ -189,6 +190,24 @@
       document.getElementById('btn-maximize').addEventListener('click', () => window.electronAPI.maximize());
       document.getElementById('btn-close').addEventListener('click', () => window.electronAPI.close());
     }
+
+    // Sidebar toggle
+    (function() {
+      const toggleBtn = document.getElementById('btn-toggle-sidebar');
+      const app = document.getElementById('app');
+
+      // Load saved state
+      const isCollapsed = localStorage.getItem('objectiv-sidebar-collapsed') === 'true';
+      if (isCollapsed) {
+        app.classList.add('sidebar-collapsed');
+      }
+
+      toggleBtn.addEventListener('click', () => {
+        app.classList.toggle('sidebar-collapsed');
+        const collapsed = app.classList.contains('sidebar-collapsed');
+        localStorage.setItem('objectiv-sidebar-collapsed', collapsed);
+      });
+    })();
 
     // Sidebar resize handle
     (function() {
