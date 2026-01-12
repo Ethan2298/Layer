@@ -223,18 +223,18 @@ body.browser-mode #intro {
   grid-template-columns: var(--sidebar-width, 280px) 1fr;
   width: 100%;
   height: calc(100vh - 40px);
-  padding-bottom: 40px;
-  overflow: hidden;
+}
+
+#app.sidebar-collapsed {
+  grid-template-columns: 1fr;
 }
 
 #app.sidebar-collapsed #side-list {
-  margin-left: calc(-1 * var(--sidebar-width, 280px));
-  opacity: 0;
+  display: none;
 }
 
 #app.sidebar-collapsed #content-view {
-  grid-column: 1 / -1;
-  grid-row: 1;
+  grid-column: 1;
 }
 
 /* ========================================
@@ -249,7 +249,6 @@ body.browser-mode #intro {
   overflow: hidden;
   min-width: 150px;
   max-width: 500px;
-  border-right: 1px solid var(--border);
   padding: 0 0 0 12px;
   transition: margin-left 0.25s ease, opacity 0.25s ease;
 }
@@ -401,16 +400,20 @@ body.browser-mode #intro {
   min-width: 0;
   scrollbar-width: none;
   -ms-overflow-style: none;
-  transition: all 0.25s ease;
 }
 
 #content-view::-webkit-scrollbar {
   display: none;
 }
 
-#content-view > * {
+#content-page {
   max-width: 720px;
   width: 100%;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  padding-top: 24px;
+  padding-bottom: 24px;
+  flex-shrink: 0;
 }
 
 #content-header {
@@ -456,7 +459,7 @@ body.browser-mode #intro {
 
 #content-body {
   flex-shrink: 0;
-  padding: 0 40px 40px 40px;
+  padding: 0 40px 16px 40px;
 }
 
 /* ========================================
@@ -793,16 +796,7 @@ body.browser-mode #intro {
    Status Bar
    ======================================== */
 #status-bar {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  padding: 8px 12px;
-  color: var(--text-muted);
-  background: var(--bg);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+  display: none;
 }
 
 #shortcuts {
@@ -812,14 +806,18 @@ body.browser-mode #intro {
 
 /* Theme Toggle */
 #theme-toggle {
+  position: fixed;
+  bottom: 12px;
+  right: 12px;
   background: none;
   border: none;
   color: var(--text-faint);
   font-size: 14px;
   cursor: pointer;
-  padding: 0 4px;
+  padding: 4px 8px;
   line-height: 1;
   transition: color 0.15s;
+  z-index: 100;
 }
 
 #theme-toggle:hover {
