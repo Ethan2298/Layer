@@ -51,7 +51,7 @@ export function createListItem(options = {}) {
   html += `<span class="${iconClasses}">${icon}</span>`;
 
   // Content column
-  const contentAttrs = contentEditable ? ' contenteditable="true"' : '';
+  const contentAttrs = contentEditable ? ' contenteditable="true" spellcheck="false"' : '';
   const escapedContent = content.replace(/</g, '&lt;').replace(/>/g, '&gt;');
   html += `<span class="list-item-content"${contentAttrs}>${escapedContent}</span>`;
 

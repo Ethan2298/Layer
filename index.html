@@ -58,14 +58,14 @@
 
     <!-- Status Bar -->
     <div id="status-bar">
-      <div id="shortcuts">[↑↓] Navigate  [a] Add  [s] Step  [f] Folder</div>
+      <div id="shortcuts"></div>
       <button id="theme-toggle" title="Toggle theme">☀</button>
     </div>
 
     <!-- Message Toast -->
     <div id="message-toast"></div>
 
-    <!-- Status Reporter (toggle with 'i' key) -->
+    <!-- Status Reporter -->
     <button class="status-toggle" id="status-toggle">inspect</button>
     <div id="status-reporter">
       <div class="status-title">System Status <span id="status-close" style="float:right;cursor:pointer;color:#666;">[x]</span></div>
@@ -232,6 +232,9 @@
     let promptTargetIndex = -1;
     let promptTargetSection = null;
     let skipBlurHandler = false; // Prevents stale blur handlers when switching edits
+
+    // Next Step timer state
+    let nextStepTimerInterval = null;
 
     // Load data (synchronous initial load - real data loaded async by initMarkdownStorage)
     function loadData() {
@@ -504,7 +507,7 @@
       html += `<span class="${iconClasses}">${icon}</span>`;
 
       // Content column
-      const contentAttrs = contentEditable ? ' contenteditable="true"' : '';
+      const contentAttrs = contentEditable ? ' contenteditable="true" spellcheck="false"' : '';
       const escapedContent = content.replace(/</g, '&lt;').replace(/>/g, '&gt;');
       html += `<span class="list-item-content"${contentAttrs}>${escapedContent}</span>`;
 
@@ -794,7 +797,7 @@
 
           if (isEditing) {
             item.innerHTML = `
-              <span class="side-item-name" contenteditable="true" data-placeholder="Name your objective"></span>
+              <span class="side-item-name" contenteditable="true" spellcheck="true" data-placeholder="Name your objective"></span>
             `;
             item.style.color = '#0891b2';
           } else {
@@ -1083,6 +1086,9 @@
       // Commit any current edit before switching objectives
       commitEditInPlace();
 
+      // Auto-pause next step timer before switching
+      autoPauseNextStepTimer();
+
       if (index === selectedObjectiveIndex) return;
 
       // Update unified state to select this objective
@@ -1233,9 +1239,10 @@
       headerTitle.textContent = obj.name;
       headerDesc.textContent = obj.description || '';
 
-      // Render priorities and steps
+      // Render priorities, next step, and steps
       body.innerHTML = '';
       renderContentPriorities(body, obj);
+      renderContentNextStep(body, obj);
       renderContentSteps(body, obj);
 
       // Refresh clarity scores
@@ -1304,6 +1311,262 @@
       }
     }
 
+    // ========================================
+    // Next Step Section
+    // ========================================
+
+    // Format seconds to H:MM:SS display
+    function formatTimerDisplay(totalSeconds) {
+      const hours = Math.floor(totalSeconds / 3600);
+      const minutes = Math.floor((totalSeconds % 3600) / 60);
+      const seconds = totalSeconds % 60;
+      return `${hours}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+    }
+
+    // Format duration for step display (e.g., "15m" or "1h 5m")
+    function formatDuration(totalSeconds) {
+      if (totalSeconds < 60) return '<1m';
+      const hours = Math.floor(totalSeconds / 3600);
+      const minutes = Math.floor((totalSeconds % 3600) / 60);
+      if (hours > 0) {
+        return minutes > 0 ? `${hours}h ${minutes}m` : `${hours}h`;
+      }
+      return `${minutes}m`;
+    }
+
+    // Start the next step timer
+    function startNextStepTimer() {
+      const obj = data.objectives[selectedObjectiveIndex];
+      if (!obj) return;
+
+      // Initialize nextStep if needed
+      if (!obj.nextStep) {
+        obj.nextStep = { text: '', elapsedSeconds: 0, isRunning: false };
+      }
+
+      obj.nextStep.isRunning = true;
+
+      // Clear any existing interval
+      if (nextStepTimerInterval) {
+        clearInterval(nextStepTimerInterval);
+      }
+
+      // Update timer every second
+      nextStepTimerInterval = setInterval(() => {
+        if (obj.nextStep && obj.nextStep.isRunning) {
+          obj.nextStep.elapsedSeconds++;
+          updateNextStepTimerDisplay(obj);
+        }
+      }, 1000);
+
+      // Update UI immediately
+      updateNextStepTimerDisplay(obj);
+      updateNextStepPlayButton(obj);
+    }
+
+    // Pause the next step timer
+    function pauseNextStepTimer() {
+      const obj = data.objectives[selectedObjectiveIndex];
+      if (!obj || !obj.nextStep) return;
+
+      obj.nextStep.isRunning = false;
+
+      if (nextStepTimerInterval) {
+        clearInterval(nextStepTimerInterval);
+        nextStepTimerInterval = null;
+      }
+
+      // Update UI
+      updateNextStepTimerDisplay(obj);
+      updateNextStepPlayButton(obj);
+
+      // Save to file
+      saveCurrentObjective();
+    }
+
+    // Update timer display without re-rendering
+    function updateNextStepTimerDisplay(obj) {
+      const timerEl = document.querySelector('.next-step-timer');
+      if (timerEl && obj.nextStep) {
+        timerEl.textContent = formatTimerDisplay(obj.nextStep.elapsedSeconds);
+        timerEl.classList.toggle('running', obj.nextStep.isRunning);
+      }
+    }
+
+    // Update play/pause button without re-rendering (CSS handles icon via .running class)
+    function updateNextStepPlayButton(obj) {
+      const btn = document.querySelector('.next-step-play-btn');
+      if (btn && obj.nextStep) {
+        btn.classList.toggle('running', obj.nextStep.isRunning);
+      }
+    }
+
+    // Toggle timer play/pause
+    function toggleNextStepTimer() {
+      const obj = data.objectives[selectedObjectiveIndex];
+      if (!obj) return;
+
+      if (obj.nextStep?.isRunning) {
+        pauseNextStepTimer();
+      } else {
+        startNextStepTimer();
+      }
+    }
+
+    // Complete next step - move to steps list
+    function completeNextStep() {
+      const obj = data.objectives[selectedObjectiveIndex];
+      if (!obj || !obj.nextStep || !obj.nextStep.text.trim()) return;
+
+      // Pause timer first
+      if (obj.nextStep.isRunning) {
+        pauseNextStepTimer();
+      }
+
+      // Create new step from next step
+      const newStep = {
+        id: Date.now().toString(36) + Math.random().toString(36).substr(2, 9),
+        name: obj.nextStep.text.trim(),
+        loggedAt: new Date().toISOString(),
+        orderNumber: (obj.steps?.length || 0) + 1,
+        duration: obj.nextStep.elapsedSeconds // Store duration in seconds
+      };
+
+      // Add to steps
+      if (!obj.steps) obj.steps = [];
+      obj.steps.push(newStep);
+
+      // Clear next step
+      obj.nextStep = { text: '', elapsedSeconds: 0, isRunning: false };
+
+      // Save and re-render
+      saveCurrentObjective();
+      renderContentView();
+    }
+
+    // Save next step text on input
+    function saveNextStepText(text) {
+      const obj = data.objectives[selectedObjectiveIndex];
+      if (!obj) return;
+
+      if (!obj.nextStep) {
+        obj.nextStep = { text: '', elapsedSeconds: 0, isRunning: false };
+      }
+
+      obj.nextStep.text = text;
+      saveCurrentObjective();
+    }
+
+    // Auto-pause timer when switching objectives or closing app
+    function autoPauseNextStepTimer() {
+      const obj = data.objectives[selectedObjectiveIndex];
+      if (obj?.nextStep?.isRunning) {
+        pauseNextStepTimer();
+      }
+    }
+
+    // Render next step section in content view
+    function renderContentNextStep(container, obj) {
+      const header = document.createElement('div');
+      header.className = 'section-header';
+      header.textContent = 'NEXT STEP';
+      container.appendChild(header);
+
+      // Initialize nextStep if needed
+      if (!obj.nextStep) {
+        obj.nextStep = { text: '', elapsedSeconds: 0, isRunning: false };
+      }
+
+      const item = document.createElement('div');
+      item.className = 'next-step-item';
+
+      // Checkbox
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      checkbox.className = 'next-step-checkbox';
+      checkbox.onchange = () => {
+        if (checkbox.checked) {
+          completeNextStep();
+        }
+      };
+      item.appendChild(checkbox);
+
+      // Editable content
+      const content = document.createElement('span');
+      content.className = 'next-step-content';
+      content.contentEditable = 'true';
+      content.spellcheck = false;
+      content.dataset.placeholder = 'What do you want to do next?';
+      content.textContent = obj.nextStep.text || '';
+
+      // Enable spellcheck on focus
+      content.onfocus = () => {
+        content.spellcheck = true;
+      };
+
+      // Debounced save on input
+      let saveTimeout = null;
+      content.oninput = () => {
+        if (saveTimeout) clearTimeout(saveTimeout);
+        saveTimeout = setTimeout(() => {
+          saveNextStepText(content.textContent);
+        }, 500);
+      };
+
+      // Save immediately on blur and disable spellcheck
+      content.onblur = () => {
+        if (saveTimeout) clearTimeout(saveTimeout);
+        saveNextStepText(content.textContent);
+        content.spellcheck = false;
+      };
+
+      item.appendChild(content);
+
+      // Meta area (timer + play button)
+      const meta = document.createElement('span');
+      meta.className = 'next-step-meta';
+
+      // Timer display
+      const timer = document.createElement('span');
+      timer.className = 'next-step-timer';
+      if (obj.nextStep.isRunning) timer.classList.add('running');
+      timer.textContent = formatTimerDisplay(obj.nextStep.elapsedSeconds);
+      meta.appendChild(timer);
+
+      // Edit button (shows on hover)
+      const editBtn = document.createElement('button');
+      editBtn.className = 'next-step-edit-btn';
+      editBtn.textContent = 'edit';
+      editBtn.onclick = (e) => {
+        e.preventDefault();
+        content.focus();
+      };
+      meta.appendChild(editBtn);
+
+      // Play/Pause button (CSS handles the icon via ::before)
+      const playBtn = document.createElement('button');
+      playBtn.className = 'next-step-play-btn';
+      if (obj.nextStep.isRunning) playBtn.classList.add('running');
+      playBtn.onclick = (e) => {
+        e.preventDefault();
+        toggleNextStepTimer();
+      };
+      meta.appendChild(playBtn);
+
+      item.appendChild(meta);
+      container.appendChild(item);
+
+      // Restart interval if timer was running
+      if (obj.nextStep.isRunning && !nextStepTimerInterval) {
+        nextStepTimerInterval = setInterval(() => {
+          if (obj.nextStep && obj.nextStep.isRunning) {
+            obj.nextStep.elapsedSeconds++;
+            updateNextStepTimerDisplay(obj);
+          }
+        }, 1000);
+      }
+    }
+
     // Render steps section in content view
     function renderContentSteps(container, obj) {
       const header = document.createElement('div');
@@ -1336,6 +1599,7 @@
         }
 
         const timestamp = formatTimestamp(step.loggedAt);
+        const durationStr = step.duration ? ` (${formatDuration(step.duration)})` : '';
         const orderNum = step.orderNumber || (actualIdx + 1);
         const isAdding = promptMode === 'add' && promptTargetSection === 'steps' && promptTargetIndex === actualIdx;
         const isEditing = promptMode === 'edit' && promptTargetSection === 'steps' && promptTargetIndex === actualIdx;
@@ -1346,7 +1610,7 @@
           iconClass: '',
           content: step.name,
           contentEditable: isInEditMode,
-          meta: `<span class="step-timestamp">${timestamp}</span>`,
+          meta: `<span class="step-timestamp">${timestamp}${durationStr}</span>`,
           metaClass: 'compact',
           selected: false
         });
@@ -1371,7 +1635,8 @@
     function focusPromptInput() {
       if (!promptMode) return;
       setTimeout(() => {
-        const contentEditable = document.querySelector('[contenteditable="true"]');
+        // Use specific selector to avoid grabbing next-step-content which is always contenteditable
+        const contentEditable = document.querySelector('.list-item-content[contenteditable="true"]');
         if (contentEditable) {
           contentEditable.focus();
           const range = document.createRange();
@@ -1863,7 +2128,8 @@
         return { needsRerender: false, removedElement: false };
       }
 
-      const contentEditable = document.querySelector('[contenteditable="true"]');
+      // Use specific selector to avoid next-step-content which is always contenteditable
+      const contentEditable = document.querySelector('.list-item-content[contenteditable="true"]');
       if (!contentEditable) {
         resetPromptState();
         return { needsRerender: false, removedElement: false };
@@ -1918,6 +2184,7 @@
      */
     function restoreElementInPlace(contentEditable, listItem, text) {
       contentEditable.removeAttribute('contenteditable');
+      contentEditable.removeAttribute('spellcheck');
       contentEditable.textContent = text;
     }
 
@@ -1957,8 +2224,9 @@
       promptTargetSection = section;
       promptData = { type: section === 'priorities' ? 'priority' : 'step', item };
 
-      // Make element editable
+      // Make element editable with spellcheck
       contentSpan.setAttribute('contenteditable', 'true');
+      contentSpan.setAttribute('spellcheck', 'true');
 
       // Focus and place cursor at end
       contentSpan.focus();
@@ -2003,8 +2271,9 @@
       promptTargetSection = 'objectives';
       promptData = { type: 'objective', item: obj };
 
-      // Make element editable
+      // Make element editable with spellcheck
       titleEl.setAttribute('contenteditable', 'true');
+      titleEl.setAttribute('spellcheck', 'true');
 
       // Focus and place cursor at end
       titleEl.focus();
@@ -2054,6 +2323,7 @@
       }
 
       titleEl.removeAttribute('contenteditable');
+      titleEl.removeAttribute('spellcheck');
       resetPromptState();
       updateStatusBar();
     }
@@ -2200,6 +2470,7 @@
             if (titleEl && obj) {
               titleEl.textContent = obj.name;
               titleEl.removeAttribute('contenteditable');
+              titleEl.removeAttribute('spellcheck');
             }
             resetPromptState();
             updateStatusBar();
@@ -2220,7 +2491,8 @@
         }
         if (e.key === 'Enter' && !e.shiftKey) {
           e.preventDefault();
-          const contentEditable = document.querySelector('[contenteditable="true"]');
+          // Use specific selector to avoid next-step-content
+          const contentEditable = document.querySelector('.list-item-content[contenteditable="true"]');
           if (contentEditable) {
             processPromptInput(contentEditable.textContent);
             return;
@@ -2246,133 +2518,7 @@
         }
         return;
       }
-
-      const SideListState = window.Objectiv?.SideListState;
-      const ItemType = SideListState?.ItemType || {};
-
-      switch (e.key) {
-        case 'ArrowUp':
-        case 'k':
-          e.preventDefault();
-          navigateSideList(-1);
-          break;
-
-        case 'ArrowDown':
-        case 'j':
-          e.preventDefault();
-          navigateSideList(1);
-          break;
-
-        case 'Enter':
-          e.preventDefault();
-          activateSelectedItem();
-          break;
-
-        case 'a':
-          e.preventDefault();
-          startAddObjective();
-          break;
-
-        case 's':
-          e.preventDefault();
-          if (data.objectives.length > 0) {
-            startLogStep();
-          }
-          break;
-
-        case 'q':
-          showMessage('session ended.');
-          break;
-
-        case 'f':
-          e.preventDefault();
-          // Open folder picker for file explorer
-          pickFolder().then(() => {
-            renderSideList();
-          });
-          break;
-      }
     });
-
-    // Navigate side list up/down
-    async function navigateSideList(direction) {
-      const SideListState = window.Objectiv?.SideListState;
-      if (!SideListState) return;
-
-      const moved = direction > 0 ? SideListState.selectNext() : SideListState.selectPrev();
-      if (!moved) return;
-
-      playNotch();
-      const item = SideListState.getSelectedItem();
-      const ItemType = SideListState.ItemType;
-
-      // Update content view based on selected item type
-      if (item) {
-        if (item.type === ItemType.OBJECTIVE) {
-          selectedObjectiveIndex = item.index;
-          viewMode = 'objective';
-          selectedFilePath = null;
-          renderContentView();
-        } else if (item.type === ItemType.FILE) {
-          // Load and display file content
-          await selectFile(item.path, item.name);
-        }
-      }
-
-      updateSideListSelection();
-
-      // Scroll the item to the snap position (dial behavior)
-      const container = document.getElementById('side-list-items');
-      const selectedIdx = SideListState.getSelectedIndex();
-      const items = container?.querySelectorAll('.side-item');
-      if (items && items[selectedIdx]) {
-        items[selectedIdx].scrollIntoView({ block: 'start' });
-      }
-    }
-
-    // Activate (Enter) the selected item
-    async function activateSelectedItem() {
-      const SideListState = window.Objectiv?.SideListState;
-      if (!SideListState) return;
-
-      const item = SideListState.getSelectedItem();
-      const ItemType = SideListState.ItemType;
-      if (!item) return;
-
-      switch (item.type) {
-        case ItemType.SELECT_VAULT:
-          await selectVault();
-          break;
-
-        case ItemType.OBJECTIVE:
-          // Already selected, maybe start editing?
-          break;
-
-        case ItemType.ADD_OBJECTIVE:
-          startAddObjective();
-          break;
-
-        case ItemType.FILES_HEADER:
-          // Toggle collapse/expand
-          SideListState.toggleFolderSection();
-          await renderSideList();
-          break;
-
-        case ItemType.SET_FOLDER:
-          await selectVault();  // Use selectVault instead of pickFolder for consistency
-          break;
-
-        case ItemType.FOLDER:
-          // Toggle expand/collapse
-          SideListState.toggleExpanded(item.path);
-          await renderSideList();
-          break;
-
-        case ItemType.FILE:
-          await selectFile(item.path, item.name);
-          break;
-      }
-    }
 
     // Edit button click handler (event delegation)
     document.getElementById('content-body').addEventListener('click', (e) => {
@@ -2399,8 +2545,6 @@
       let shortcuts = '';
       if (promptMode) {
         shortcuts = '[Enter] Confirm  [Esc] Cancel';
-      } else {
-        shortcuts = '[↑↓] Navigate  [a] Add  [s] Step  [f] Folder';
       }
       document.getElementById('shortcuts').textContent = shortcuts;
     }
@@ -2444,6 +2588,11 @@
 
       updateView();
     }
+
+    // Auto-pause timer when closing browser/app
+    window.addEventListener('beforeunload', () => {
+      autoPauseNextStepTimer();
+    });
 
     init();
   </script>
