@@ -16,7 +16,7 @@ priority: high
 ## Description
 
 <!-- SECTION:DESCRIPTION:BEGIN -->
-Complete implementation of the Objectiv.go vision: an event-sourced productivity system with deep behavioral insights and a Grok-powered AI assistant that has full context access and can actively edit objectives, priorities, and steps.
+Complete implementation of the Objectiv vision: an event-sourced productivity system with deep behavioral insights and a Grok-powered AI assistant that has full context access and can actively edit objectives, priorities, and steps.
 
 ## Vision Statement
 Build a productivity system that understands *behavior*, not just tasks. The AI sees your process—what you did, how you worked, when you hesitated, what derailed you. Data is transparent: you see exactly what the AI sees.

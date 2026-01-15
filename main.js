@@ -136,8 +136,15 @@ function createWindow() {
   ipcMain.handle('folder-explorer:read-dir', async (event, dirPath) => {
     try {
       const entries = fs.readdirSync(dirPath, { withFileTypes: true });
+      // File extensions to hide from directory listing
+      const hiddenExtensions = ['.jxr'];
       const items = entries
         .filter(entry => !entry.name.startsWith('.')) // Hide dotfiles
+        .filter(entry => {
+          if (entry.isDirectory()) return true;
+          const ext = path.extname(entry.name).toLowerCase();
+          return !hiddenExtensions.includes(ext);
+        })
         .map(entry => ({
           name: entry.name,
           path: path.join(dirPath, entry.name),
@@ -189,6 +196,46 @@ function createWindow() {
   // Read file contents
   ipcMain.handle('folder-explorer:read-file', async (event, filePath) => {
     try {
+      const ext = path.extname(filePath).toLowerCase().slice(1);
+      const imageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp', 'ico', 'avif'];
+      const excelExtensions = ['xlsx', 'xls', 'xlsm', 'xlsb'];
+
+      if (imageExtensions.includes(ext)) {
+        // Read image as base64
+        const buffer = fs.readFileSync(filePath);
+        const base64 = buffer.toString('base64');
+        const mimeTypes = {
+          'jpg': 'image/jpeg',
+          'jpeg': 'image/jpeg',
+          'png': 'image/png',
+          'gif': 'image/gif',
+          'webp': 'image/webp',
+          'svg': 'image/svg+xml',
+          'bmp': 'image/bmp',
+          'ico': 'image/x-icon',
+          'avif': 'image/avif'
+        };
+        return {
+          success: true,
+          content: base64,
+          mimeType: mimeTypes[ext] || 'image/png',
+          isImage: true
+        };
+      }
+
+      if (excelExtensions.includes(ext)) {
+        // Read Excel as base64 binary
+        const buffer = fs.readFileSync(filePath);
+        const base64 = buffer.toString('base64');
+        return {
+          success: true,
+          content: base64,
+          isExcel: true,
+          fileName: path.basename(filePath)
+        };
+      }
+
+      // Read as text (includes CSV which is text-based)
       const content = fs.readFileSync(filePath, 'utf-8');
       return { success: true, content };
     } catch (err) {

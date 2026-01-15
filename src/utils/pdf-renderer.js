@@ -34,7 +34,7 @@ const PDF_TEMPLATES = {
     isInvoice: true
   },
   'user-guide': {
-    title: 'Objectiv.go User Guide',
+    title: 'Objectiv User Guide',
     subtitle: 'Version 1.0',
     sections: [
       { heading: 'Introduction', paragraphs: 2 },

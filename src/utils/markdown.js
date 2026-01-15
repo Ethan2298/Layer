@@ -151,10 +151,54 @@ export function isPdfFile(filename) {
   return getFileExtension(filename) === 'pdf';
 }
 
+/**
+ * Check if file is an image
+ * @param {string} filename - File name or path
+ * @returns {boolean} True if image file
+ */
+export function isImageFile(filename) {
+  const ext = getFileExtension(filename);
+  return ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp', 'ico', 'avif'].includes(ext);
+}
+
+/**
+ * Check if file is an Excel spreadsheet
+ * @param {string} filename - File name or path
+ * @returns {boolean} True if Excel file
+ */
+export function isExcelFile(filename) {
+  const ext = getFileExtension(filename);
+  return ['xlsx', 'xls', 'xlsm', 'xlsb', 'csv'].includes(ext);
+}
+
+/**
+ * Get MIME type for image file
+ * @param {string} filename - File name or path
+ * @returns {string} MIME type
+ */
+export function getImageMimeType(filename) {
+  const ext = getFileExtension(filename);
+  const mimeTypes = {
+    'jpg': 'image/jpeg',
+    'jpeg': 'image/jpeg',
+    'png': 'image/png',
+    'gif': 'image/gif',
+    'webp': 'image/webp',
+    'svg': 'image/svg+xml',
+    'bmp': 'image/bmp',
+    'ico': 'image/x-icon',
+    'avif': 'image/avif'
+  };
+  return mimeTypes[ext] || 'image/png';
+}
+
 export default {
   parseMarkdown,
   getFileExtension,
   isMarkdownFile,
   isTextFile,
-  isPdfFile
+  isPdfFile,
+  isImageFile,
+  isExcelFile,
+  getImageMimeType
 };

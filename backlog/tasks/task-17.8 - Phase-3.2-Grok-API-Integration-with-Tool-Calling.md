@@ -68,7 +68,7 @@ Each tool handler:
 ## System Prompt Structure
 
 ```
-You are an AI assistant in Objectiv.go...
+You are an AI assistant in Objectiv...
 
 ## Current Context
 [Injected from ContextBuilder]

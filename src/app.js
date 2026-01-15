@@ -1,5 +1,5 @@
 /**
- * Objectiv.go - Main Application Entry Point
+ * Objectiv - Main Application Entry Point
  *
  * This module serves as the central entry point, importing and
  * re-exporting all modules for use by the application.
@@ -19,6 +19,7 @@ import * as EditController from './controllers/edit-controller.js';
 import * as FolderExplorer from './components/folder-explorer.js';
 import * as Markdown from './utils/markdown.js';
 import * as PdfRenderer from './utils/pdf-renderer.js';
+import * as ExcelRenderer from './utils/excel-renderer.js';
 
 // ========================================
 // Re-export for global access
@@ -35,7 +36,8 @@ window.Objectiv = {
   EditController,
   FolderExplorer,
   Markdown,
-  PdfRenderer
+  PdfRenderer,
+  ExcelRenderer
 };
 
 // ========================================
@@ -46,7 +48,7 @@ window.Objectiv = {
  * Initialize the application
  */
 export function init() {
-  console.log('Objectiv.go modules loaded');
+  console.log('Objectiv modules loaded');
 
   // Set up clarity score update callback
   Clarity.setOnScoresUpdated(() => {
@@ -84,7 +86,8 @@ export {
   EditController,
   FolderExplorer,
   Markdown,
-  PdfRenderer
+  PdfRenderer,
+  ExcelRenderer
 };
 
 export default {
@@ -98,5 +101,6 @@ export default {
   FolderExplorer,
   Markdown,
   PdfRenderer,
+  ExcelRenderer,
   init
 };

@@ -1,15 +1,17 @@
 {
-  "name": "Objectiv.go",
+  "name": "Objectiv",
   "version": "1.0.0",
-  "description": "Objectiv.go - A tool for transmuting dreams into reality.",
+  "description": "Objectiv - A tool for transmuting dreams into reality.",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
     "terminal": "node life.js"
   },
   "dependencies": {
+    "@fortune-sheet/core": "^1.0.4",
     "@supabase/supabase-js": "^2.47.0",
-    "blessed": "^0.1.81"
+    "blessed": "^0.1.81",
+    "exceljs": "^4.4.0"
   },
   "devDependencies": {
     "electron": "^33.0.0"

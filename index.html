@@ -9,6 +9,8 @@
   <!-- PDF libraries for real PDF rendering -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <!-- ExcelJS for Excel file parsing -->
+  <script src="./node_modules/exceljs/dist/exceljs.min.js"></script>
   <script>
     // Configure pdf.js worker
     if (window.pdfjsLib) {
@@ -1351,10 +1353,12 @@
       // Check if it's a PDF file
       const Markdown = window.Objectiv?.Markdown;
       const PdfRenderer = window.Objectiv?.PdfRenderer;
+      const ExcelRenderer = window.Objectiv?.ExcelRenderer;
 
       if (Markdown?.isPdfFile && Markdown.isPdfFile(fileName)) {
         // PDF file - render real PDF with floating pages
-        document.getElementById('content-page').classList.remove('image-mode');
+        const contentPage = document.getElementById('content-page');
+        contentPage.classList.remove('image-mode', 'excel-mode');
         headerTitle.textContent = fileName;
         headerDesc.textContent = '';
 
@@ -1370,10 +1374,37 @@
         return;
       }
 
+      // Check if it's an Excel file
+      if (Markdown?.isExcelFile && Markdown.isExcelFile(fileName)) {
+        const contentPage = document.getElementById('content-page');
+        contentPage.classList.remove('image-mode');
+        contentPage.classList.add('excel-mode');
+        headerTitle.textContent = fileName;
+        headerDesc.textContent = '';
+
+        if (ExcelRenderer?.renderExcel) {
+          // Check file extension for CSV vs Excel binary
+          const ext = fileName.split('.').pop()?.toLowerCase();
+          if (ext === 'csv' && typeof content === 'string') {
+            // CSV is text-based
+            ExcelRenderer.renderCsv(body, content, fileName);
+          } else if (typeof content === 'string' && content.length > 100) {
+            // Excel binary data as base64
+            ExcelRenderer.renderExcel(body, content, fileName);
+          } else {
+            body.innerHTML = '<div class="excel-error">Invalid Excel data</div>';
+          }
+        } else {
+          body.innerHTML = '<div class="excel-error">Excel renderer not available</div>';
+        }
+        return;
+      }
+
       // Check if it's an image file
       if (Markdown?.isImageFile && Markdown.isImageFile(fileName)) {
         // Enable expanded image mode
         const contentPage = document.getElementById('content-page');
+        contentPage.classList.remove('excel-mode');
         contentPage.classList.add('image-mode');
 
         headerTitle.textContent = fileName;
@@ -1425,8 +1456,8 @@
         return;
       }
 
-      // Not an image - remove image mode
-      document.getElementById('content-page').classList.remove('image-mode');
+      // Not an image/excel - remove special modes
+      document.getElementById('content-page').classList.remove('image-mode', 'excel-mode');
 
       // Non-PDF: proceed with text/markdown rendering
       const contentStr = (typeof content === 'string') ? content : '';
@@ -1899,7 +1930,8 @@
       if (!promptMode) return;
       setTimeout(() => {
         // Use specific selector to avoid grabbing next-step-content which is always contenteditable
-        const contentEditable = document.querySelector('.list-item-content[contenteditable="true"]');
+        // Also check for sidebar objective input (.side-item-name)
+        const contentEditable = document.querySelector('.list-item-content[contenteditable="true"], .side-item-name[contenteditable="true"]');
         if (contentEditable) {
           contentEditable.focus();
           const range = document.createRange();
@@ -2579,31 +2611,54 @@
     }
 
     /**
-     * Commit objective title edit
+     * Commit objective title edit or add
      */
     function commitObjectiveTitleEdit() {
-      if (promptMode !== 'edit' || promptTargetSection !== 'objectives') return;
-
-      const titleEl = document.getElementById('content-header-title');
-      if (!titleEl) return;
+      if (promptTargetSection !== 'objectives') return;
+      if (promptMode !== 'edit' && promptMode !== 'add') return;
 
       skipBlurHandler = true;
 
-      const value = titleEl.textContent.trim();
-      const obj = data.objectives[selectedObjectiveIndex];
+      if (promptMode === 'edit') {
+        // Editing existing objective title in content header
+        const titleEl = document.getElementById('content-header-title');
+        if (!titleEl) return;
 
-      if (value && obj) {
-        obj.name = value;
-        saveData();
-        // Also update sidebar
-        renderSideList();
-      } else if (obj) {
-        // Restore original if empty
-        titleEl.textContent = obj.name;
+        const value = titleEl.textContent.trim();
+        const obj = data.objectives[selectedObjectiveIndex];
+
+        if (value && obj) {
+          obj.name = value;
+          saveData();
+          // Also update sidebar
+          renderSideList();
+        } else if (obj) {
+          // Restore original if empty
+          titleEl.textContent = obj.name;
+        }
+
+        titleEl.removeAttribute('contenteditable');
+        titleEl.removeAttribute('spellcheck');
+      } else if (promptMode === 'add') {
+        // Adding new objective in sidebar
+        const sidebarInput = document.querySelector('.side-item-name[contenteditable="true"]');
+        if (!sidebarInput) return;
+
+        const value = sidebarInput.textContent.trim();
+
+        if (value && promptData.item) {
+          // Save the new objective
+          promptData.item.name = value;
+          saveData();
+          renderSideList();
+        } else {
+          // Remove empty placeholder
+          data.objectives.splice(promptTargetIndex, 1);
+          selectedObjectiveIndex = Math.max(0, data.objectives.length - 1);
+          renderSideList();
+        }
       }
 
-      titleEl.removeAttribute('contenteditable');
-      titleEl.removeAttribute('spellcheck');
       resetPromptState();
       updateStatusBar();
     }
@@ -2740,17 +2795,24 @@
     document.addEventListener('keydown', (e) => {
       // Handle prompt input
       if (promptMode === 'add' || promptMode === 'edit' || promptMode === 'refine') {
-        // Special handling for objective title editing
-        if (promptMode === 'edit' && promptTargetSection === 'objectives') {
+        // Special handling for objective title editing/adding
+        if ((promptMode === 'edit' || promptMode === 'add') && promptTargetSection === 'objectives') {
           if (e.key === 'Escape') {
             e.preventDefault();
-            // Restore original and cancel
-            const titleEl = document.getElementById('content-header-title');
-            const obj = data.objectives[selectedObjectiveIndex];
-            if (titleEl && obj) {
-              titleEl.textContent = obj.name;
-              titleEl.removeAttribute('contenteditable');
-              titleEl.removeAttribute('spellcheck');
+            if (promptMode === 'edit') {
+              // Restore original and cancel
+              const titleEl = document.getElementById('content-header-title');
+              const obj = data.objectives[selectedObjectiveIndex];
+              if (titleEl && obj) {
+                titleEl.textContent = obj.name;
+                titleEl.removeAttribute('contenteditable');
+                titleEl.removeAttribute('spellcheck');
+              }
+            } else if (promptMode === 'add') {
+              // Remove placeholder objective
+              data.objectives.splice(promptTargetIndex, 1);
+              selectedObjectiveIndex = Math.max(0, data.objectives.length - 1);
+              renderSideList();
             }
             resetPromptState();
             updateStatusBar();
