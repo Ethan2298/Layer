@@ -1058,7 +1058,13 @@
         }
       }
 
-      // Scroll clicked item to the 30vh snap line (smooth animation)
+      // Mobile: execute immediately, no scroll animation needed
+      if (isMobile) {
+        executeAction();
+        return;
+      }
+
+      // Desktop: Scroll clicked item to the 30vh snap line (smooth animation)
       const container = document.getElementById('side-list-items');
       const items = container?.querySelectorAll('.side-item');
       if (container && items && items[idx]) {
