@@ -187,6 +187,38 @@ export function getStorageStatus() {
 }
 
 // ========================================
+// Realtime Subscriptions
+// ========================================
+
+/**
+ * Subscribe to realtime changes on the objectives table
+ * @param {Function} onChangeCallback - Called with payload when changes occur
+ * @returns {Object|null} Subscription object (call .unsubscribe() to stop)
+ */
+export function subscribeToChanges(onChangeCallback) {
+  const client = initClient();
+  if (!client) {
+    console.warn('Cannot subscribe: Supabase client not available');
+    return null;
+  }
+
+  const subscription = client
+    .channel('objectives-changes')
+    .on('postgres_changes',
+      { event: '*', schema: 'public', table: 'objectives' },
+      (payload) => {
+        console.log('Realtime change:', payload.eventType, payload);
+        onChangeCallback(payload);
+      }
+    )
+    .subscribe((status) => {
+      console.log('Realtime subscription status:', status);
+    });
+
+  return subscription;
+}
+
+// ========================================
 // Exports
 // ========================================
 
@@ -195,5 +227,6 @@ export default {
   saveObjective,
   deleteObjective,
   isStorageAvailable,
-  getStorageStatus
+  getStorageStatus,
+  subscribeToChanges
 };

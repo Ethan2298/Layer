@@ -10,7 +10,8 @@ import {
   saveObjective as saveObjectiveFile,
   deleteObjective as deleteObjectiveFile,
   isStorageAvailable,
-  getStorageStatus
+  getStorageStatus,
+  subscribeToChanges
 } from './supabase-storage.js';
 
 // ========================================
@@ -230,6 +231,11 @@ export function invalidateCache() {
  */
 export { getStorageStatus };
 
+/**
+ * Subscribe to realtime changes
+ */
+export { subscribeToChanges };
+
 // ========================================
 // Factory Functions
 // ========================================
@@ -290,6 +296,7 @@ export default {
   deleteOneObjective,
   invalidateCache,
   getStorageStatus,
+  subscribeToChanges,
   generateId,
   createObjective,
   createPriority,

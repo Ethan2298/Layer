@@ -409,6 +409,19 @@
           if (window.updateView) updateView();
           updateStatusReporter();
         }
+
+        // Subscribe to realtime changes for live updates (MCP, other clients)
+        if (window.Objectiv?.Repository?.subscribeToChanges) {
+          window.Objectiv.Repository.subscribeToChanges(async (payload) => {
+            console.log('Realtime update received, refreshing...');
+            const reloadedData = await window.Objectiv.Repository.reloadData();
+            if (reloadedData && reloadedData.objectives) {
+              data = reloadedData;
+              if (window.updateView) updateView();
+            }
+          });
+          console.log('Subscribed to realtime updates');
+        }
       } catch (e) {
         console.warn('Storage init failed:', e);
       }
