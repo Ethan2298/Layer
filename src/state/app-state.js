@@ -3,7 +3,12 @@
  *
  * Centralized mutable state for the application.
  * Contains all global state variables that were previously inline in index.html.
+ *
+ * Note: selectedObjectiveIndex and viewMode are now delegated to TabState
+ * for per-tab independence.
  */
+
+import * as TabState from './tab-state.js';
 
 // ========================================
 // Application State
@@ -12,10 +17,6 @@
 const state = {
   // Data
   data: { objectives: [], folders: [] },
-
-  // Navigation state
-  selectedObjectiveIndex: 0,
-  viewMode: 'objective', // 'objective' | 'folder' | 'empty'
 
   // Mobile state
   isMobile: false,
@@ -70,16 +71,26 @@ export function getFolders() {
   return state.data.folders;
 }
 
+/**
+ * Get selected objective index by computing from TabState selection
+ */
 export function getSelectedObjectiveIndex() {
-  return state.selectedObjectiveIndex;
+  const selection = TabState.getSelection();
+  if (!selection.id || selection.type !== 'objective') return -1;
+
+  return state.data.objectives.findIndex(obj => obj.id === selection.id);
 }
 
 export function getSelectedObjective() {
-  return state.data.objectives[state.selectedObjectiveIndex] || null;
+  const index = getSelectedObjectiveIndex();
+  return index >= 0 ? state.data.objectives[index] : null;
 }
 
+/**
+ * Delegate to TabState
+ */
 export function getViewMode() {
-  return state.viewMode;
+  return TabState.getViewMode();
 }
 
 export function isMobile() {
@@ -162,12 +173,23 @@ export function setFolders(folders) {
   state.data.folders = folders;
 }
 
+/**
+ * Set selected objective by updating TabState selection
+ */
 export function setSelectedObjectiveIndex(index) {
-  state.selectedObjectiveIndex = index;
+  if (index >= 0 && index < state.data.objectives.length) {
+    const objective = state.data.objectives[index];
+    TabState.setSelection(objective.id, 'objective');
+  } else {
+    TabState.setSelection(null, null);
+  }
 }
 
+/**
+ * Delegate to TabState
+ */
 export function setViewMode(mode) {
-  state.viewMode = mode;
+  TabState.setViewMode(mode);
 }
 
 export function setIsMobile(value) {

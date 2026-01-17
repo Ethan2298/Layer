@@ -10,6 +10,7 @@
 // ========================================
 
 import * as Repository from './data/repository.js';
+import * as TabState from './state/tab-state.js';
 import * as SideListState from './state/side-list-state.js';
 import * as AppState from './state/app-state.js';
 
@@ -60,6 +61,7 @@ import * as NextStepTimer from './components/next-step-timer.js';
 window.Objectiv = {
   // Data & State
   Repository,
+  TabState,
   SideListState,
   AppState,
 
@@ -107,14 +109,16 @@ function wireCallbacks() {
   // Wire NavigationController callbacks
   NavigationController.setCallbacks({
     renderContentView: ContentView.renderContentView,
-    updateView
+    updateView,
+    updateTabTitle: updateTabTitleFromSelection
   });
 
   // Wire SideList callbacks
   SideList.setCallbacks({
     renderContentView: ContentView.renderContentView,
     updateView,
-    playNotch: () => {} // Sound disabled
+    playNotch: () => {}, // Sound disabled
+    updateTabTitle: updateTabTitleFromSelection
   });
 
   // Wire ContentView callbacks
@@ -128,6 +132,11 @@ function wireCallbacks() {
   NextStepTimer.setCallbacks({
     saveData,
     renderContentView: ContentView.renderContentView
+  });
+
+  // Wire Tabs callbacks
+  Tabs.setCallbacks({
+    updateView
   });
 }
 
@@ -148,6 +157,38 @@ function saveData() {
 }
 
 /**
+ * Update active tab title based on current selection
+ */
+function updateTabTitleFromSelection() {
+  const selection = TabState.getSelection();
+  const viewMode = AppState.getViewMode();
+
+  let title = 'Objectiv';
+
+  if (selection.type === 'home') {
+    title = 'Home';
+  } else if (selection.type === 'objective' && selection.id) {
+    // Look up objective by ID from data
+    const objectives = AppState.getObjectives();
+    const objective = objectives.find(o => o.id === selection.id);
+    if (objective) {
+      title = objective.name || 'Untitled';
+    }
+  } else if (selection.type === 'folder' && selection.id) {
+    // Look up folder by ID from data
+    const folders = AppState.getFolders();
+    const folder = folders.find(f => f.id === selection.id);
+    if (folder) {
+      title = folder.name || 'Folder';
+    }
+  } else if (viewMode === 'empty' || !selection.id) {
+    title = 'Objectiv';
+  }
+
+  Tabs.updateActiveTabTitle(title);
+}
+
+/**
  * Main update function
  */
 async function updateView() {
@@ -155,6 +196,7 @@ async function updateView() {
   ContentView.renderContentView();
   PromptController.focusPromptInput();
   updateStatusBar();
+  updateTabTitleFromSelection();
 }
 
 /**
@@ -383,14 +425,17 @@ export async function init() {
   // Initialize event handlers
   initEventHandlers();
 
-  // Initial render
-  const data = AppState.getData();
-  if (data.objectives.length > 0) {
-    AppState.setSelectedObjectiveIndex(0);
-    AppState.setViewMode('objective');
+  // Initial render - check if TabState has a saved selection
+  const selection = TabState.getSelection();
+  const savedViewMode = TabState.getViewMode();
+
+  // If there's a saved selection, use it; otherwise default to home
+  if (selection.type && savedViewMode) {
+    // Selection exists from persisted state - viewMode should also be correct
   } else {
-    AppState.setSelectedObjectiveIndex(-1);
-    AppState.setViewMode('empty');
+    // No saved selection - default to home
+    TabState.setSelection('home', 'home');
+    AppState.setViewMode('home');
   }
 
   updateView();
@@ -410,6 +455,7 @@ if (document.readyState === 'loading') {
 export {
   // Data & State
   Repository,
+  TabState,
   SideListState,
   AppState,
 
@@ -449,6 +495,7 @@ export {
 
 export default {
   Repository,
+  TabState,
   SideListState,
   AppState,
   Utils,

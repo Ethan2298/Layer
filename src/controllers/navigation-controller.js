@@ -5,6 +5,7 @@
  */
 
 import AppState from '../state/app-state.js';
+import * as TabState from '../state/tab-state.js';
 import PromptController from './prompt-controller.js';
 
 // ========================================
@@ -13,10 +14,12 @@ import PromptController from './prompt-controller.js';
 
 let _renderContentView = () => {};
 let _updateView = () => {};
+let _updateTabTitle = () => {};
 
-export function setCallbacks({ renderContentView, updateView }) {
+export function setCallbacks({ renderContentView, updateView, updateTabTitle }) {
   if (renderContentView) _renderContentView = renderContentView;
   if (updateView) _updateView = updateView;
+  if (updateTabTitle) _updateTabTitle = updateTabTitle;
 }
 
 // ========================================
@@ -37,8 +40,14 @@ export function initScrollSnapSelection() {
     if (_rafPending) return;
     _rafPending = true;
 
+    // Capture active tab ID before async work
+    const scrollTabId = TabState.getActiveTabId();
+
     requestAnimationFrame(() => {
       _rafPending = false;
+
+      // Only process if still on the same tab
+      if (TabState.getActiveTabId() !== scrollTabId) return;
 
       const SideListState = window.Objectiv?.SideListState;
       if (!SideListState) return;
@@ -73,13 +82,19 @@ export function initScrollSnapSelection() {
 
         // Update content immediately
         const itemData = SideListState.getItems()[closestIdx];
-        if (itemData?.type === SideListState.ItemType.OBJECTIVE) {
+        if (itemData?.type === SideListState.ItemType.HOME) {
+          AppState.setViewMode('home');
+          _renderContentView();
+          _updateTabTitle();
+        } else if (itemData?.type === SideListState.ItemType.OBJECTIVE) {
           AppState.setSelectedObjectiveIndex(itemData.index);
           AppState.setViewMode('objective');
           _renderContentView();
+          _updateTabTitle();
         } else if (itemData?.type === SideListState.ItemType.FOLDER) {
           AppState.setViewMode('folder');
           _renderContentView();
+          _updateTabTitle();
         }
 
         playNotch();
@@ -118,13 +133,19 @@ function loadContentForIndex(index) {
   const selectedItem = SideListState.getSelectedItem();
   if (!selectedItem) return;
 
-  if (selectedItem.type === SideListState.ItemType.OBJECTIVE) {
+  if (selectedItem.type === SideListState.ItemType.HOME) {
+    AppState.setViewMode('home');
+    _renderContentView();
+    _updateTabTitle();
+  } else if (selectedItem.type === SideListState.ItemType.OBJECTIVE) {
     AppState.setSelectedObjectiveIndex(selectedItem.index);
     AppState.setViewMode('objective');
     _renderContentView();
+    _updateTabTitle();
   } else if (selectedItem.type === SideListState.ItemType.FOLDER) {
     AppState.setViewMode('folder');
     _renderContentView();
+    _updateTabTitle();
   }
 }
 

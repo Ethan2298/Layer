@@ -94,16 +94,51 @@ function createConfirmRow(text) {
 // ========================================
 
 /**
- * Render the content view (selected objective or folder)
+ * Render the content view (selected objective, folder, or home)
  */
 export function renderContentView() {
   const viewMode = AppState.getViewMode();
 
-  if (viewMode === 'folder') {
+  if (viewMode === 'home') {
+    renderHomeView();
+  } else if (viewMode === 'folder') {
     renderFolderView();
   } else {
     renderObjectiveView();
   }
+}
+
+/**
+ * Render home view
+ */
+export function renderHomeView() {
+  const headerTitle = document.getElementById('content-header-title');
+  const headerDesc = document.getElementById('content-header-description');
+  const body = document.getElementById('content-body');
+
+  if (!headerTitle || !body) return;
+
+  headerTitle.textContent = 'Home';
+  if (headerDesc) headerDesc.textContent = 'Welcome to Objectiv';
+
+  const data = AppState.getData();
+  const objectiveCount = data.objectives.length;
+  const folderCount = data.folders.length;
+
+  body.innerHTML = `
+    <div class="home-view">
+      <div class="home-stats">
+        <div class="home-stat">
+          <span class="home-stat-value">${objectiveCount}</span>
+          <span class="home-stat-label">Objective${objectiveCount !== 1 ? 's' : ''}</span>
+        </div>
+        <div class="home-stat">
+          <span class="home-stat-value">${folderCount}</span>
+          <span class="home-stat-label">Folder${folderCount !== 1 ? 's' : ''}</span>
+        </div>
+      </div>
+    </div>
+  `;
 }
 
 /**

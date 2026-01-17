@@ -3,21 +3,20 @@
  *
  * State management for the side list navigation.
  * Manages folders and objectives in a hierarchical structure.
+ *
+ * Note: Selection and folder expansion are now delegated to TabState
+ * for per-tab independence.
  */
+
+import * as TabState from './tab-state.js';
 
 // ========================================
 // State Shape
 // ========================================
 
 const state = {
-  // Current selection index in the flat navigable list
-  selectedIndex: 0,
-
   // Cached flat list of navigable items
   items: [],
-
-  // Set of expanded folder IDs
-  expandedFolders: new Set(),
 
   // Cached folders array
   folders: []
@@ -28,6 +27,7 @@ const state = {
 // ========================================
 
 export const ItemType = {
+  HOME: 'home',
   UNFILED_HEADER: 'unfiled-header',
   OBJECTIVE: 'objective',
   FOLDER: 'folder',
@@ -39,8 +39,25 @@ export const ItemType = {
 // Getters
 // ========================================
 
+/**
+ * Get selected index by finding selection ID in items array
+ */
 export function getSelectedIndex() {
-  return state.selectedIndex;
+  const selection = TabState.getSelection();
+  if (!selection.type) return -1;
+
+  return state.items.findIndex(item => {
+    if (selection.type === 'home' && item.type === ItemType.HOME) {
+      return true;
+    }
+    if (selection.type === 'objective' && item.type === ItemType.OBJECTIVE) {
+      return item.objectiveId === selection.id;
+    }
+    if (selection.type === 'folder' && item.type === ItemType.FOLDER) {
+      return item.folderId === selection.id;
+    }
+    return false;
+  });
 }
 
 export function getItems() {
@@ -48,44 +65,63 @@ export function getItems() {
 }
 
 export function getSelectedItem() {
-  return state.items[state.selectedIndex] || null;
+  const index = getSelectedIndex();
+  return index >= 0 ? state.items[index] : null;
 }
 
 export function getFolders() {
   return state.folders;
 }
 
+/**
+ * Delegate to TabState
+ */
 export function isFolderExpanded(folderId) {
-  return state.expandedFolders.has(folderId);
+  return TabState.isFolderExpanded(folderId);
 }
 
+/**
+ * Delegate to TabState
+ */
 export function getExpandedFolders() {
-  return state.expandedFolders;
+  return TabState.getExpandedFolders();
 }
 
 // ========================================
 // Actions - Selection
 // ========================================
 
+/**
+ * Set selected index by updating TabState selection
+ */
 export function setSelectedIndex(index) {
   if (index >= 0 && index < state.items.length) {
-    state.selectedIndex = index;
+    const item = state.items[index];
+    if (item.type === ItemType.HOME) {
+      TabState.setSelection('home', 'home');
+    } else if (item.type === ItemType.OBJECTIVE) {
+      TabState.setSelection(item.objectiveId, 'objective');
+    } else if (item.type === ItemType.FOLDER) {
+      TabState.setSelection(item.folderId, 'folder');
+    }
   }
 }
 
 export function selectNext() {
-  const newIndex = state.selectedIndex + 1;
+  const currentIndex = getSelectedIndex();
+  const newIndex = currentIndex + 1;
   if (newIndex < state.items.length) {
-    state.selectedIndex = newIndex;
+    setSelectedIndex(newIndex);
     return true;
   }
   return false;
 }
 
 export function selectPrev() {
-  const newIndex = state.selectedIndex - 1;
+  const currentIndex = getSelectedIndex();
+  const newIndex = currentIndex - 1;
   if (newIndex >= 0) {
-    state.selectedIndex = newIndex;
+    setSelectedIndex(newIndex);
     return true;
   }
   return false;
@@ -102,7 +138,7 @@ export function selectItem(type, identifier) {
     return false;
   });
   if (index !== -1) {
-    state.selectedIndex = index;
+    setSelectedIndex(index);
     return true;
   }
   return false;
@@ -112,23 +148,25 @@ export function selectItem(type, identifier) {
 // Actions - Folder Expansion
 // ========================================
 
+/**
+ * Delegate to TabState
+ */
 export function toggleFolder(folderId) {
-  if (state.expandedFolders.has(folderId)) {
-    state.expandedFolders.delete(folderId);
-  } else {
-    state.expandedFolders.add(folderId);
-  }
-  saveExpandedFolders();
+  TabState.toggleFolder(folderId);
 }
 
+/**
+ * Delegate to TabState
+ */
 export function expandFolder(folderId) {
-  state.expandedFolders.add(folderId);
-  saveExpandedFolders();
+  TabState.expandFolder(folderId);
 }
 
+/**
+ * Delegate to TabState
+ */
 export function collapseFolder(folderId) {
-  state.expandedFolders.delete(folderId);
-  saveExpandedFolders();
+  TabState.collapseFolder(folderId);
 }
 
 // ========================================
@@ -154,6 +192,16 @@ export function rebuildItems({ objectives = [], folders = [], isAddingObjective 
 
   // Store folders for reference
   state.folders = folders;
+
+  // Get expanded folders from TabState
+  const expandedFolders = TabState.getExpandedFolders();
+
+  // Add Home item at the top
+  items.push({
+    type: ItemType.HOME,
+    name: 'Home',
+    depth: 0
+  });
 
   // Separate unfiled objectives (folderId is null or undefined)
   const unfiledObjectives = objectives.filter(obj => !obj.folderId);
@@ -207,8 +255,8 @@ export function rebuildItems({ objectives = [], folders = [], isAddingObjective 
       hasChildren: folder.children.length > 0 || folder.objectives.length > 0
     });
 
-    // Only show contents if folder is expanded
-    if (state.expandedFolders.has(folder.id)) {
+    // Only show contents if folder is expanded (use expandedFolders from TabState)
+    if (expandedFolders.has(folder.id)) {
       // Combine objectives and child folders, then sort by orderIndex
       const folderContents = [
         ...folder.objectives.map(obj => ({ type: 'objective', data: obj, orderIndex: obj.orderIndex || 0 })),
@@ -256,63 +304,21 @@ export function rebuildItems({ objectives = [], folders = [], isAddingObjective 
 
   state.items = items;
 
-  // Clamp selection index
-  if (state.selectedIndex >= items.length) {
-    state.selectedIndex = Math.max(0, items.length - 1);
-  }
-
   return items;
 }
 
 // ========================================
-// Persistence
+// Persistence (now handled by TabState)
 // ========================================
 
-const STORAGE_KEY = 'objectiv-sidelist-state';
-const EXPANDED_FOLDERS_KEY = 'objectiv-expanded-folders';
-
 export function saveState() {
-  try {
-    const data = {
-      selectedIndex: state.selectedIndex
-    };
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-  } catch (e) {
-    console.warn('Failed to save side list state:', e);
-  }
+  // Selection and expansion are now saved via TabState
+  TabState.saveToStorage();
 }
 
 export function loadState() {
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      const data = JSON.parse(stored);
-      state.selectedIndex = data.selectedIndex || 0;
-    }
-  } catch (e) {
-    console.warn('Failed to load side list state:', e);
-  }
-}
-
-function saveExpandedFolders() {
-  try {
-    const data = Array.from(state.expandedFolders);
-    localStorage.setItem(EXPANDED_FOLDERS_KEY, JSON.stringify(data));
-  } catch (e) {
-    console.warn('Failed to save expanded folders:', e);
-  }
-}
-
-function loadExpandedFolders() {
-  try {
-    const stored = localStorage.getItem(EXPANDED_FOLDERS_KEY);
-    if (stored) {
-      const data = JSON.parse(stored);
-      state.expandedFolders = new Set(data);
-    }
-  } catch (e) {
-    console.warn('Failed to load expanded folders:', e);
-  }
+  // Selection and expansion are now loaded via TabState
+  // Nothing to do here - TabState.init() handles this
 }
 
 // ========================================
@@ -320,8 +326,8 @@ function loadExpandedFolders() {
 // ========================================
 
 export function init() {
-  loadState();
-  loadExpandedFolders();
+  // TabState should be initialized before this module
+  // No local state to load anymore
 }
 
 // ========================================

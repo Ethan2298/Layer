@@ -13,11 +13,13 @@ import AppState from '../state/app-state.js';
 let _renderContentView = () => {};
 let _updateView = () => {};
 let _playNotch = () => {};
+let _updateTabTitle = () => {};
 
-export function setCallbacks({ renderContentView, updateView, playNotch }) {
+export function setCallbacks({ renderContentView, updateView, playNotch, updateTabTitle }) {
   if (renderContentView) _renderContentView = renderContentView;
   if (updateView) _updateView = updateView;
   if (playNotch) _playNotch = playNotch;
+  if (updateTabTitle) _updateTabTitle = updateTabTitle;
 }
 
 // ========================================
@@ -139,6 +141,33 @@ function createSideListItem(itemData, idx, isSelected) {
   const indicator = '<span class="side-item-indicator">\u25CF</span>';
 
   switch (itemData.type) {
+    case ItemType.HOME:
+      item.className = 'side-item home-row' + (isSelected ? ' selected' : '');
+      item.dataset.type = 'home';
+      item.innerHTML = `
+        <svg class="home-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+          <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+          <polyline points="9 22 9 12 15 12 15 22"/>
+        </svg>
+        <span class="side-item-name">Home</span>
+        ${indicator}
+      `;
+
+      item.onclick = (e) => {
+        e.stopPropagation();
+        SideListState.setSelectedIndex(idx);
+        AppState.setViewMode('home');
+        updateSideListSelection();
+        _renderContentView();
+        _updateTabTitle();
+
+        if (AppState.isMobile()) {
+          const Mobile = window.Objectiv?.Mobile;
+          if (Mobile?.setMobileView) Mobile.setMobileView('detail');
+        }
+      };
+      break;
+
     case ItemType.UNFILED_HEADER:
       item.className = 'side-item unfiled-header';
       item.innerHTML = '<span class="side-item-name">Unfiled</span>';
@@ -173,6 +202,7 @@ function createSideListItem(itemData, idx, isSelected) {
         AppState.setViewMode('folder');
         updateSideListSelection();
         _renderContentView();
+        _updateTabTitle();
 
         if (AppState.isMobile()) {
           const Mobile = window.Objectiv?.Mobile;
@@ -251,11 +281,23 @@ async function handleSideItemClick(idx, itemData) {
 
   async function executeAction() {
     switch (itemData.type) {
+      case ItemType.HOME:
+        AppState.setViewMode('home');
+        _renderContentView();
+        _updateTabTitle();
+        updateSideListSelection();
+        if (AppState.isMobile()) {
+          const Mobile = window.Objectiv?.Mobile;
+          if (Mobile?.setMobileView) Mobile.setMobileView('detail');
+        }
+        break;
+
       case ItemType.OBJECTIVE:
         if (PromptController?.commitEditInPlace) PromptController.commitEditInPlace();
         AppState.setSelectedObjectiveIndex(itemData.index);
         AppState.setViewMode('objective');
         _renderContentView();
+        _updateTabTitle();
         updateSideListSelection();
         if (AppState.isMobile()) {
           const Mobile = window.Objectiv?.Mobile;
@@ -266,6 +308,7 @@ async function handleSideItemClick(idx, itemData) {
       case ItemType.FOLDER:
         AppState.setViewMode('folder');
         _renderContentView();
+        _updateTabTitle();
         updateSideListSelection();
         if (AppState.isMobile()) {
           const Mobile = window.Objectiv?.Mobile;
