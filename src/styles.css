@@ -1726,7 +1726,7 @@ body.light-mode .side-item.folder-row.selected {
 
 /* Folder name */
 .folder-name {
-  flex: 1;
+  flex: 0 1 auto;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
