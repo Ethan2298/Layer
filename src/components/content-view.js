@@ -7,6 +7,7 @@
 import AppState from '../state/app-state.js';
 import { formatTimestamp, formatDuration } from '../utils.js';
 import { renderContentNextStep } from './next-step-timer.js';
+import GlobalNav from './global-nav.js';
 
 // ========================================
 // Callbacks (set by app.js)
@@ -108,6 +109,9 @@ export function renderContentView() {
   } else {
     renderObjectiveView();
   }
+
+  // Update nav bar to reflect current selection
+  GlobalNav.updateFromSelection();
 }
 
 /**

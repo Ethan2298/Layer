@@ -18,6 +18,7 @@ let blurTimeout = null;
 // DOM References
 let navInput = null;
 let dropdown = null;
+let breadcrumb = null;
 let btnBack = null;
 let btnForward = null;
 let btnRefresh = null;
@@ -38,6 +39,7 @@ export function setCallbacks({ renderContentView, renderSideList }) {
 export function init() {
   navInput = document.getElementById('global-nav-input');
   dropdown = document.getElementById('global-nav-dropdown');
+  breadcrumb = document.getElementById('global-nav-breadcrumb');
   btnBack = document.getElementById('nav-back');
   btnForward = document.getElementById('nav-forward');
   btnRefresh = document.getElementById('nav-refresh');
@@ -58,6 +60,16 @@ export function init() {
 
   // Cancel blur timeout if focusing back
   navInput.addEventListener('focus', handleFocus);
+
+  // Click on breadcrumb area to switch to search mode
+  if (breadcrumb) {
+    breadcrumb.addEventListener('click', (e) => {
+      // Only switch to input if clicking on the breadcrumb container itself, not a segment
+      if (e.target === breadcrumb) {
+        showSearchInput();
+      }
+    });
+  }
 
   // Web navigation buttons
   if (btnBack) {
@@ -141,6 +153,10 @@ function handleKeydown(e) {
 function handleBlur() {
   blurTimeout = setTimeout(() => {
     closeDropdown();
+    // Restore breadcrumb if input is empty
+    if (navInput && !navInput.value.trim()) {
+      updateFromSelection();
+    }
   }, 150);
 }
 
@@ -149,11 +165,57 @@ function handleFocus() {
     clearTimeout(blurTimeout);
     blurTimeout = null;
   }
+  // Hide breadcrumb when focusing input
+  if (breadcrumb) {
+    breadcrumb.classList.remove('visible');
+  }
   // Show dropdown if there's content
   const query = navInput.value.trim();
   if (query) {
     const results = getSearchResults(query);
     renderDropdown(results, query);
+  }
+}
+
+// ========================================
+// URL Detection
+// ========================================
+
+/**
+ * Check if input looks like a URL (vs a search query)
+ * Returns true for: google.com, http://..., https://..., localhost, IPs
+ */
+function looksLikeUrl(input) {
+  const trimmed = input.trim();
+
+  // Starts with http:// or https://
+  if (/^https?:\/\//i.test(trimmed)) return true;
+
+  // Contains a dot followed by valid TLD-like chars (e.g., google.com, foo.co.uk)
+  if (/^[^\s]+\.[a-z]{2,}(\/|$|\?|#)/i.test(trimmed)) return true;
+
+  // localhost with optional port
+  if (/^localhost(:\d+)?(\/|$)/i.test(trimmed)) return true;
+
+  // IP address pattern
+  if (/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}(:\d+)?(\/|$)/.test(trimmed)) return true;
+
+  return false;
+}
+
+/**
+ * Build the appropriate URL - either direct or Google search
+ */
+function buildWebUrl(input) {
+  if (looksLikeUrl(input)) {
+    // It's a URL - add https if needed
+    if (!/^https?:\/\//i.test(input)) {
+      return 'https://' + input;
+    }
+    return input;
+  } else {
+    // It's a search query - use Google
+    return 'https://www.google.com/search?q=' + encodeURIComponent(input);
   }
 }
 
@@ -252,11 +314,16 @@ function renderDropdown(results, query) {
   }
 
   if (web.length > 0) {
-    html += '<div class="web-search-section">Web</div>';
     web.forEach(item => {
+      const isUrl = looksLikeUrl(item.url);
+      const icon = isUrl ? '🌐' : '🔍';
+      const label = isUrl ? `Go to "${escapeHtml(item.url)}"` : `Search Google for "${escapeHtml(item.url)}"`;
+      const section = isUrl ? 'Web' : 'Search';
+
+      html += `<div class="web-search-section">${section}</div>`;
       html += `<div class="web-search-result" data-index="${flatIndex}" data-type="web" data-url="${escapeHtml(item.url)}">
-        <span class="web-search-result-icon">🌐</span>
-        <span class="web-search-result-name">Go to "${escapeHtml(item.url)}"</span>
+        <span class="web-search-result-icon">${icon}</span>
+        <span class="web-search-result-name">${label}</span>
       </div>`;
       flatIndex++;
     });
@@ -369,10 +436,7 @@ function navigateToResult(result) {
     setTimeout(() => {
       const webview = document.querySelector('.web-browser-frame');
       if (webview) {
-        let url = result.url;
-        if (!/^https?:\/\//i.test(url)) {
-          url = 'https://' + url;
-        }
+        const url = buildWebUrl(result.url);
         webview.src = url;
 
         // Update the input to show the URL
@@ -388,6 +452,227 @@ function navigateToResult(result) {
 }
 
 // ========================================
+// Breadcrumb Path Building
+// ========================================
+
+/**
+ * Build breadcrumb path for an item based on folder hierarchy
+ * Returns: "Folder > Subfolder > Item Name"
+ */
+function buildBreadcrumbPath(item, folders) {
+  if (!item) return '';
+
+  // Get the item name
+  const itemName = item.name || item.data?.name || '';
+
+  // Determine parent folder ID based on item type
+  // For folders: use parentId (the folder's parent)
+  // For objectives: use folderId (the folder containing the objective)
+  let currentFolderId;
+  if (item.type === 'folder') {
+    currentFolderId = item.parentId || item.data?.parentId;
+  } else {
+    currentFolderId = item.folderId || item.data?.folderId;
+  }
+
+  // Build folder chain from bottom up
+  const folderChain = [];
+  while (currentFolderId) {
+    const folder = folders.find(f => f.id === currentFolderId);
+    if (folder) {
+      folderChain.unshift(folder.name);
+      currentFolderId = folder.parentId;
+    } else {
+      break;
+    }
+  }
+
+  // Return the full path: parent folders + item name
+  return [...folderChain, itemName].join(' › ');
+}
+
+/**
+ * Show the search input and hide breadcrumb
+ */
+function showSearchInput() {
+  if (breadcrumb) breadcrumb.classList.remove('visible');
+  if (navInput) {
+    navInput.style.display = '';
+    navInput.focus();
+  }
+}
+
+/**
+ * Show breadcrumb and hide search input
+ */
+function showBreadcrumb() {
+  if (breadcrumb && breadcrumb.children.length > 0) {
+    breadcrumb.classList.add('visible');
+  }
+}
+
+/**
+ * Navigate to a folder by ID
+ */
+function navigateToFolder(folderId) {
+  const SideListState = window.Objectiv?.SideListState;
+  if (!SideListState) return;
+
+  AppState.setViewMode('folder');
+
+  // Update side list selection
+  SideListState.selectItem(SideListState.ItemType.FOLDER, folderId);
+
+  // Expand the folder
+  SideListState.expandFolder(folderId);
+
+  // Re-render
+  _renderSideList();
+  _renderContentView();
+}
+
+/**
+ * Build breadcrumb data structure
+ * Returns array of { name, folderId, isCurrent }
+ */
+function buildBreadcrumbData(item, folders) {
+  const segments = [];
+
+  if (!item) return segments;
+
+  const itemName = item.name || item.data?.name || '';
+
+  // Determine parent folder ID
+  let currentFolderId;
+  if (item.type === 'folder') {
+    currentFolderId = item.parentId || item.data?.parentId;
+  } else {
+    currentFolderId = item.folderId || item.data?.folderId;
+  }
+
+  // Build folder chain from bottom up
+  const folderChain = [];
+  while (currentFolderId) {
+    const folder = folders.find(f => f.id === currentFolderId);
+    if (folder) {
+      folderChain.unshift({ name: folder.name, folderId: folder.id });
+      currentFolderId = folder.parentId;
+    } else {
+      break;
+    }
+  }
+
+  // Add folder segments (clickable)
+  folderChain.forEach(f => {
+    segments.push({ name: f.name, folderId: f.folderId, isCurrent: false });
+  });
+
+  // Add current item (not clickable if it's the current page)
+  segments.push({ name: itemName, folderId: null, isCurrent: true });
+
+  return segments;
+}
+
+/**
+ * Render breadcrumb segments into the breadcrumb container
+ */
+function renderBreadcrumb(segments) {
+  if (!breadcrumb) return;
+
+  breadcrumb.innerHTML = '';
+
+  if (segments.length === 0) {
+    breadcrumb.classList.remove('visible');
+    return;
+  }
+
+  segments.forEach((seg, idx) => {
+    // Add separator before non-first segments
+    if (idx > 0) {
+      const sep = document.createElement('span');
+      sep.className = 'breadcrumb-separator';
+      sep.textContent = '›';
+      breadcrumb.appendChild(sep);
+    }
+
+    const span = document.createElement('span');
+    span.className = 'breadcrumb-segment' + (seg.isCurrent ? ' current' : '');
+    span.textContent = seg.name;
+
+    if (!seg.isCurrent && seg.folderId) {
+      span.addEventListener('click', (e) => {
+        e.stopPropagation();
+        navigateToFolder(seg.folderId);
+      });
+    }
+
+    breadcrumb.appendChild(span);
+  });
+
+  breadcrumb.classList.add('visible');
+}
+
+/**
+ * Update nav bar based on current selection
+ */
+export function updateFromSelection() {
+  if (!navInput) return;
+
+  const SideListState = window.Objectiv?.SideListState;
+  const viewMode = AppState.getViewMode();
+  const folders = SideListState?.getFolders() || [];
+
+  // Handle based on view mode
+  if (viewMode === 'home') {
+    renderBreadcrumb([{ name: 'Home', folderId: null, isCurrent: true }]);
+    navInput.value = '';
+    return;
+  }
+
+  if (viewMode === 'web') {
+    // Hide breadcrumb, show input with URL
+    if (breadcrumb) breadcrumb.classList.remove('visible');
+    if (!navInput.value) {
+      navInput.placeholder = 'Search or enter URL';
+    }
+    return;
+  }
+
+  if (viewMode === 'folder') {
+    const selectedItem = SideListState?.getSelectedItem();
+    if (selectedItem && selectedItem.type === 'folder') {
+      const segments = buildBreadcrumbData(selectedItem, folders);
+      renderBreadcrumb(segments);
+      navInput.value = '';
+    }
+    return;
+  }
+
+  if (viewMode === 'objective') {
+    const data = AppState.getData();
+    const objIndex = AppState.getSelectedObjectiveIndex();
+    const obj = data.objectives[objIndex];
+
+    if (obj) {
+      const item = {
+        type: 'objective',
+        name: obj.name,
+        folderId: obj.folderId
+      };
+      const segments = buildBreadcrumbData(item, folders);
+      renderBreadcrumb(segments);
+      navInput.value = '';
+    }
+    return;
+  }
+
+  // Fallback - hide breadcrumb
+  if (breadcrumb) breadcrumb.classList.remove('visible');
+  navInput.value = '';
+  navInput.placeholder = 'Search or enter URL';
+}
+
+// ========================================
 // Public API
 // ========================================
 
@@ -397,6 +682,7 @@ function navigateToResult(result) {
 export function setUrl(url) {
   if (navInput) {
     navInput.value = url;
+    navInput.placeholder = 'Search or enter URL';
   }
 }
 
@@ -413,5 +699,6 @@ export default {
   init,
   setCallbacks,
   setUrl,
-  clear
+  clear,
+  updateFromSelection
 };

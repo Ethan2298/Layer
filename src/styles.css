@@ -196,9 +196,9 @@ body.platform-darwin #btn-close {
 #app {
   display: none;
   grid-template-columns: var(--sidebar-width, 280px) 1fr;
-  grid-template-rows: 36px auto 1fr;
+  grid-template-rows: 36px 1fr;
   width: 100%;
-  height: calc(100vh - 40px);
+  height: 100vh;
 }
 
 #header {
@@ -228,17 +228,12 @@ body.platform-darwin.fullscreen #header {
   -webkit-app-region: no-drag; /* Keep buttons/tabs clickable */
 }
 
-#global-nav-row {
-  grid-column: 1 / -1;
+#side-list {
   grid-row: 2;
 }
 
-#side-list {
-  grid-row: 3;
-}
-
 #content-view {
-  grid-row: 3;
+  grid-row: 2;
 }
 
 #app.sidebar-collapsed {
@@ -251,6 +246,7 @@ body.platform-darwin.fullscreen #header {
 
 #app.sidebar-collapsed #content-view {
   grid-column: 1;
+  margin-left: 8px;
 }
 
 /* ========================================
@@ -271,28 +267,16 @@ body.platform-darwin.fullscreen #header {
 
 #resize-handle {
   position: fixed;
-  top: 80px; /* Below header (36px) + nav row (44px) */
+  top: 36px; /* Below header (36px) */
   left: calc(var(--sidebar-width, 280px) - 8px);
   width: 16px;
-  height: calc(100vh - 80px);
+  height: calc(100vh - 36px);
   cursor: col-resize;
   z-index: 10;
   background: transparent;
 }
 
-#resize-handle::after {
-  content: '';
-  position: absolute;
-  right: 7px;
-  top: 0;
-  width: 1.2px;
-  height: 100%;
-  background: rgba(255, 255, 255, 0.1);
-}
-
-body.light-mode #resize-handle::after {
-  background: rgba(0, 0, 0, 0.15);
-}
+/* Drag handle line hidden - content view border serves as visual indicator */
 
 #side-list-items {
   flex: 1;
@@ -452,6 +436,19 @@ body.light-mode .side-item.selected {
   stroke: var(--accent);
 }
 
+/* Objective icon in sidebar */
+.objective-icon {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  margin-right: 6px;
+  stroke: var(--text-muted);
+}
+
+.side-item.selected .objective-icon {
+  stroke: var(--accent);
+}
+
 /* Web mode - full screen browser */
 #content-page.web-mode {
   max-width: none;
@@ -472,7 +469,10 @@ body.light-mode .side-item.selected {
 /* Ensure content-view fills height in web mode */
 #app.web-mode #content-view {
   overflow: hidden;
-  padding: 0;
+}
+
+#content-view > #content-page.web-mode {
+  overflow: hidden;
 }
 
 #app.web-mode .mobile-header {
@@ -661,12 +661,13 @@ body.light-mode .web-search-dropdown {
   flex-direction: column;
   align-items: stretch;
   justify-content: flex-start;
-  height: 100%;
-  overflow-y: auto;
-  overflow-x: hidden;
+  height: auto;
+  overflow: hidden;
   min-width: 0;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
+  background: var(--bg-subtle);
+  border-radius: 12px;
+  margin: 8px 8px 8px 0;
+  border: 1px solid var(--border);
 }
 
 #content-view::-webkit-scrollbar {
@@ -711,8 +712,8 @@ body.light-mode .web-search-dropdown {
   align-items: center;
   gap: 4px;
   padding: 8px 12px;
-  background: var(--bg);
-  border-bottom: 1px solid var(--border);
+  background: transparent;
+  flex-shrink: 0;
 }
 
 /* Global Navigation Bar (Omnibox) */
@@ -723,7 +724,7 @@ body.light-mode .web-search-dropdown {
   gap: 8px;
   flex: 1;
   padding: 6px 12px;
-  background: var(--bg-subtle);
+  background: var(--bg);
   border-radius: 6px;
 }
 
@@ -754,6 +755,56 @@ body.light-mode .web-search-dropdown {
 
 .global-nav-input::selection {
   background: rgba(8, 145, 178, 0.3);
+}
+
+/* Breadcrumb navigation */
+.global-nav-breadcrumb {
+  display: none;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.global-nav-breadcrumb.visible {
+  display: flex;
+}
+
+.global-nav-breadcrumb.visible + .global-nav-input {
+  display: none;
+}
+
+.breadcrumb-segment {
+  color: var(--text-muted);
+  font-size: 13px;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding: 2px 4px;
+  border-radius: 4px;
+  transition: color 0.15s, background 0.15s;
+}
+
+.breadcrumb-segment:hover {
+  color: var(--text);
+  background: var(--bg-hover);
+}
+
+.breadcrumb-segment.current {
+  color: var(--text);
+  cursor: default;
+}
+
+.breadcrumb-segment.current:hover {
+  background: transparent;
+}
+
+.breadcrumb-separator {
+  color: var(--text-dim);
+  font-size: 12px;
+  flex-shrink: 0;
 }
 
 /* Position dropdown relative to global nav bar */
@@ -914,9 +965,19 @@ body.light-mode .tab-add:hover {
   background: rgba(0, 0, 0, 0.1);
 }
 
+/* Content page wrapper - scrollable area */
 #content-view > #content-page {
   padding-top: calc(30vh - 118px);
   align-self: center;
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+#content-view > #content-page::-webkit-scrollbar {
+  display: none;
 }
 
 #content-page {
@@ -2242,16 +2303,18 @@ body.light-mode .side-item.folder-row.selected {
   color: #000;
 }
 
-/* Objective row - align with folder names */
+/* Objective row - icon included in HTML, align with Home/Web */
 .side-item[data-type="objective"] {
-  padding-left: 28px; /* 8px base + 14px icon + 6px margin */
+  padding-left: 16px;
 }
 
-/* Objectives inside folders - add indentation (8px per level like VS Code) */
-.side-item[data-type="objective"][data-depth="1"] { padding-left: 36px; }
-.side-item[data-type="objective"][data-depth="2"] { padding-left: 44px; }
-.side-item[data-type="objective"][data-depth="3"] { padding-left: 52px; }
-.side-item[data-type="objective"][data-depth="4"] { padding-left: 60px; }
+/* Objectives inside folders - icon to the right of indent guides */
+/* Guides at: depth1=26px, depth2=34px, depth3=42px, depth4=50px */
+/* Icon starts 8px after the rightmost guide */
+.side-item[data-type="objective"][data-depth="1"] { padding-left: 34px; }
+.side-item[data-type="objective"][data-depth="2"] { padding-left: 42px; }
+.side-item[data-type="objective"][data-depth="3"] { padding-left: 50px; }
+.side-item[data-type="objective"][data-depth="4"] { padding-left: 58px; }
 
 /* Indent guide lines - centered under parent chevron */
 /* Chevron center = padding-left + (toggle-width / 2) = 16px + 10px = 26px */

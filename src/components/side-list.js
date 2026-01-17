@@ -255,13 +255,20 @@ function createSideListItem(itemData, idx, isSelected) {
       item.dataset.objectiveId = itemData.objectiveId;
       item.dataset.folderId = itemData.folderId || '';
 
+      const objectiveIcon = `<svg class="objective-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+        <circle cx="12" cy="12" r="10"/>
+        <circle cx="12" cy="12" r="1"/>
+      </svg>`;
+
       if (isEditing) {
         item.innerHTML = `
+          ${objectiveIcon}
           <span class="side-item-name" contenteditable="true" spellcheck="true" data-placeholder="Name your objective"></span>
         `;
         item.style.color = '#0891b2';
       } else {
         item.innerHTML = `
+          ${objectiveIcon}
           <span class="side-item-name">${itemData.name}</span>${indicator}
         `;
         item.onclick = () => handleSideItemClick(idx, itemData);
