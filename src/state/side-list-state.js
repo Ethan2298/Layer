@@ -190,25 +190,11 @@ export function rebuildItems({ objectives = [], folders = [], isAddingObjective 
     }
   });
 
-  // Sort root folders by orderIndex
-  rootFolders.sort((a, b) => (a.orderIndex || 0) - (b.orderIndex || 0));
-
-  // Sort unfiled objectives by orderIndex
-  unfiledObjectives.sort((a, b) => (a.orderIndex || 0) - (b.orderIndex || 0));
-
-  // Add unfiled objectives first (no header, just the objectives)
-  unfiledObjectives.forEach(obj => {
-    const objIndex = objectives.indexOf(obj);
-    items.push({
-      type: ItemType.OBJECTIVE,
-      index: objIndex,
-      objectiveId: obj.id,
-      data: obj,
-      name: obj.name,
-      folderId: null,
-      depth: 0
-    });
-  });
+  // Combine unfiled objectives and root folders, then sort by orderIndex
+  const rootItems = [
+    ...unfiledObjectives.map(obj => ({ type: 'objective', data: obj, orderIndex: obj.orderIndex || 0 })),
+    ...rootFolders.map(folder => ({ type: 'folder', data: folder, orderIndex: folder.orderIndex || 0 }))
+  ].sort((a, b) => a.orderIndex - b.orderIndex);
 
   // Recursively add folders and their contents
   function addFolderItems(folder, depth) {
@@ -224,10 +210,15 @@ export function rebuildItems({ objectives = [], folders = [], isAddingObjective 
 
     // Only show contents if folder is expanded
     if (state.expandedFolders.has(folder.id)) {
-      // Add objectives in this folder (sorted by orderIndex)
-      folder.objectives
-        .sort((a, b) => (a.orderIndex || 0) - (b.orderIndex || 0))
-        .forEach(obj => {
+      // Combine objectives and child folders, then sort by orderIndex
+      const folderContents = [
+        ...folder.objectives.map(obj => ({ type: 'objective', data: obj, orderIndex: obj.orderIndex || 0 })),
+        ...folder.children.map(child => ({ type: 'folder', data: child, orderIndex: child.orderIndex || 0 }))
+      ].sort((a, b) => a.orderIndex - b.orderIndex);
+
+      folderContents.forEach(item => {
+        if (item.type === 'objective') {
+          const obj = item.data;
           const objIndex = objectives.indexOf(obj);
           items.push({
             type: ItemType.OBJECTIVE,
@@ -238,17 +229,31 @@ export function rebuildItems({ objectives = [], folders = [], isAddingObjective 
             folderId: folder.id,
             depth: depth + 1
           });
-        });
-
-      // Add child folders (sorted by orderIndex)
-      folder.children
-        .sort((a, b) => (a.orderIndex || 0) - (b.orderIndex || 0))
-        .forEach(child => addFolderItems(child, depth + 1));
+        } else {
+          addFolderItems(item.data, depth + 1);
+        }
+      });
     }
   }
 
-  // Add all root folders
-  rootFolders.forEach(folder => addFolderItems(folder, 0));
+  // Add root items (interleaved objectives and folders)
+  rootItems.forEach(item => {
+    if (item.type === 'objective') {
+      const obj = item.data;
+      const objIndex = objectives.indexOf(obj);
+      items.push({
+        type: ItemType.OBJECTIVE,
+        index: objIndex,
+        objectiveId: obj.id,
+        data: obj,
+        name: obj.name,
+        folderId: null,
+        depth: 0
+      });
+    } else {
+      addFolderItems(item.data, 0);
+    }
+  });
 
   // Add "Add folder" option
   items.push({

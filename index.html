@@ -40,7 +40,7 @@
     <div id="intro">
       <div style="text-align: center;">
         <div><span id="intro-text"></span><span id="intro-cursor"></span></div>
-        <div id="intro-tagline" style="color: #e0e0e0; font-size: 0.8rem; margin-top: 8px; opacity: 0;"></div>
+        <div id="intro-tagline" style="font-size: 0.8rem; margin-top: 8px; opacity: 0;"></div>
       </div>
     </div>
 
@@ -1300,8 +1300,8 @@
 
         e.dataTransfer.dropEffect = 'move';
 
-        // For objectives, calculate insert position (before/after)
-        if (targetType === 'objective' && dragType === 'objective') {
+        // For objectives or folders dragged over objectives, calculate insert position (before/after)
+        if (targetType === 'objective' && (dragType === 'objective' || dragType === 'folder')) {
           const rect = element.getBoundingClientRect();
           const midY = rect.top + rect.height / 2;
           const position = e.clientY < midY ? 'before' : 'after';
@@ -1363,15 +1363,7 @@
           if (dragType === 'objective') {
             await handleObjectiveDrop(dragId, dragData, insertPosition);
           } else if (dragType === 'folder') {
-            const newParentId = targetType === 'unfiled' ? null : targetId;
-            if (window.Objectiv?.Repository?.updateFolder) {
-              await window.Objectiv.Repository.updateFolder({ id: dragId, parentId: newParentId });
-              // Reload folders
-              const folders = await window.Objectiv.Repository.loadAllFolders();
-              data.folders = folders;
-              renderSideList();
-              console.log('Moved folder', dragId, 'to parent', newParentId || 'root');
-            }
+            await handleFolderDrop(dragId, dragData, insertPosition);
           }
         } catch (err) {
           console.error('Drop failed:', err);
@@ -1439,6 +1431,66 @@
       renderSideList();
 
       console.log('Reordered objective', dragId, 'to index', newOrderIndex, 'in folder', newFolderId || 'unfiled');
+    }
+
+    // Handle folder drop with position awareness
+    async function handleFolderDrop(dragId, dragData, insertPosition) {
+      if (!insertPosition) {
+        console.warn('No insert position for folder drop');
+        return;
+      }
+
+      const Repository = window.Objectiv?.Repository;
+      if (!Repository?.updateFolder) {
+        console.warn('Repository.updateFolder not available');
+        return;
+      }
+
+      const { targetId, targetType, position, folderId } = insertPosition;
+
+      // Determine the new parent folder
+      // - If dropping among unfiled objectives or into unfiled area, parentId = null (root folder)
+      // - If dropping into a folder, parentId = that folder
+      // - If dropping relative to an objective inside a folder, parentId = that folder
+      let newParentId;
+      if (targetType === 'unfiled') {
+        newParentId = null;
+      } else if (targetType === 'folder' && position === 'into') {
+        newParentId = targetId;
+      } else {
+        // Dropping relative to an objective - use its folder context
+        newParentId = folderId;
+      }
+
+      // Calculate the new order index based on target objective position
+      let newOrderIndex;
+      if (targetType === 'objective' && (position === 'before' || position === 'after')) {
+        // Find the target objective to get its orderIndex
+        const targetObj = data.objectives.find(o => o.id === targetId);
+        if (targetObj) {
+          const targetOrder = targetObj.orderIndex || 0;
+          if (position === 'before') {
+            newOrderIndex = targetOrder > 0 ? targetOrder - 1 : 0;
+          } else {
+            newOrderIndex = targetOrder + 1;
+          }
+        } else {
+          newOrderIndex = data.folders.length * 1000;
+        }
+      } else {
+        // Dropping into a folder or unfiled - append at end
+        newOrderIndex = data.folders.length * 1000;
+      }
+
+      // Update the folder's order and parent
+      await Repository.updateFolder({ id: dragId, orderIndex: newOrderIndex, parentId: newParentId });
+
+      // Reload folders and refresh
+      const folders = await Repository.loadAllFolders();
+      data.folders = folders;
+      renderSideList();
+
+      console.log('Reordered folder', dragId, 'to index', newOrderIndex, 'in parent', newParentId || 'root');
     }
 
     // Calculate order index for inserting before/after a target objective

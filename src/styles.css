@@ -201,6 +201,10 @@ body.browser-mode #intro {
   color: var(--text);
 }
 
+#intro-tagline {
+  color: var(--text-muted);
+}
+
 #intro-cursor {
   display: inline-block;
   width: 0.6em;
@@ -273,6 +277,10 @@ body.browser-mode #intro {
   width: 1px;
   height: 48px;
   background: rgba(255, 255, 255, 0.1);
+}
+
+body.light-mode #resize-handle::after {
+  background: rgba(0, 0, 0, 0.15);
 }
 
 #side-list-items {
