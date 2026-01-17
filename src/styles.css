@@ -68,6 +68,10 @@ body.browser-mode #intro {
   height: 100%;
 }
 
+body.browser-mode #app {
+  height: 100vh;
+}
+
 #titlebar-title {
   padding-left: 12px;
   font-size: 12px;
@@ -226,8 +230,29 @@ body.browser-mode #intro {
 #app {
   display: none;
   grid-template-columns: var(--sidebar-width, 280px) 1fr;
+  grid-template-rows: 36px 1fr;
   width: 100%;
   height: calc(100vh - 40px);
+}
+
+#app-header-bar {
+  grid-column: 1 / -1;
+  grid-row: 1;
+  display: flex;
+  align-items: center;
+  height: 36px;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  padding: 0 8px;
+  z-index: 5;
+}
+
+#side-list {
+  grid-row: 2;
+}
+
+#content-view {
+  grid-row: 2;
 }
 
 #app.sidebar-collapsed {
@@ -259,23 +284,28 @@ body.browser-mode #intro {
 }
 
 #resize-handle {
-  position: absolute;
-  bottom: 0;
-  right: 0;
+  position: fixed;
+  top: 68px; /* 32px titlebar + 36px header */
+  left: calc(var(--sidebar-width, 280px) - 8px);
   width: 16px;
-  height: 48px;
+  height: calc(100vh - 68px);
   cursor: col-resize;
   z-index: 10;
   background: transparent;
 }
 
+body.browser-mode #resize-handle {
+  top: 36px; /* 36px header only, no titlebar */
+  height: calc(100vh - 36px);
+}
+
 #resize-handle::after {
   content: '';
   position: absolute;
-  right: 0;
-  bottom: 0;
-  width: 1px;
-  height: 48px;
+  right: 7px;
+  top: 0;
+  width: 1.2px;
+  height: 100%;
   background: rgba(255, 255, 255, 0.1);
 }
 
@@ -413,10 +443,9 @@ body.light-mode .side-item.selected {
 #content-view {
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: stretch;
   justify-content: flex-start;
   height: 100%;
-  padding-top: calc(30vh - 118px);
   overflow-y: auto;
   overflow-x: hidden;
   min-width: 0;
@@ -426,6 +455,42 @@ body.light-mode .side-item.selected {
 
 #content-view::-webkit-scrollbar {
   display: none;
+}
+
+/* ========================================
+   App Header Bar (Warp style)
+   ======================================== */
+.header-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.header-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text);
+}
+
+.header-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+.header-spacer {
+  flex: 1;
+}
+
+#content-view > #content-page {
+  padding-top: calc(30vh - 118px);
+  align-self: center;
 }
 
 #content-page {
@@ -1496,6 +1561,20 @@ body.light-mode .excel-table tbody tr:hover td {
     grid-template-columns: 1fr;
   }
 
+  /* Hide app header bar on mobile */
+  #app-header-bar {
+    display: none;
+  }
+
+  #app {
+    grid-template-rows: 1fr;
+  }
+
+  #side-list,
+  #content-view {
+    grid-row: 1;
+  }
+
   /* Mobile List View - show sidebar full-width, hide content */
   #app.mobile-list-view #side-list {
     display: flex;
@@ -1788,7 +1867,6 @@ body.light-mode .side-item.folder-row.selected {
   margin-right: 4px;
   padding: 0;
   border: none;
-  border-radius: 4px;
   background: transparent;
   cursor: pointer;
   flex-shrink: 0;

@@ -28,9 +28,10 @@ let isResizing = false;
  */
 export function initSidebarToggle() {
   const toggleBtn = document.getElementById('btn-toggle-sidebar');
+  const headerToggleBtn = document.getElementById('sidebar-toggle');
   const app = document.getElementById('app');
 
-  if (!toggleBtn || !app) return;
+  if (!app) return;
 
   // Load saved state
   const isCollapsed = localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === 'true';
@@ -38,11 +39,19 @@ export function initSidebarToggle() {
     app.classList.add('sidebar-collapsed');
   }
 
-  toggleBtn.addEventListener('click', () => {
+  const handleToggle = () => {
     app.classList.toggle('sidebar-collapsed');
     const collapsed = app.classList.contains('sidebar-collapsed');
     localStorage.setItem(SIDEBAR_COLLAPSED_KEY, collapsed);
-  });
+  };
+
+  if (toggleBtn) {
+    toggleBtn.addEventListener('click', handleToggle);
+  }
+
+  if (headerToggleBtn) {
+    headerToggleBtn.addEventListener('click', handleToggle);
+  }
 }
 
 /**
