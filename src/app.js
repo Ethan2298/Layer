@@ -395,6 +395,18 @@ function initEventHandlers() {
 export async function init() {
   console.log('Objectiv modules loaded');
 
+  // Set platform class for CSS (e.g., traffic light padding on macOS)
+  if (window.electronAPI?.platform) {
+    document.body.classList.add(`platform-${window.electronAPI.platform}`);
+  }
+
+  // Listen for fullscreen changes to adjust header layout
+  if (window.electronAPI?.onFullscreenChange) {
+    window.electronAPI.onFullscreenChange((isFullscreen) => {
+      document.body.classList.toggle('fullscreen', isFullscreen);
+    });
+  }
+
   // Initialize state modules
   SideListState.init();
 

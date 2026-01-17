@@ -2,12 +2,16 @@
   "name": "Objectiv",
   "version": "2.0.0",
   "description": "Objectiv - A tool for transmuting dreams into reality.",
+  "main": "main.js",
   "scripts": {
-    "dev": "npx serve .",
-    "start": "npx serve .",
+    "start": "electron .",
+    "web": "npx serve .",
     "terminal": "node life.js"
   },
   "dependencies": {
     "blessed": "^0.1.81"
+  },
+  "devDependencies": {
+    "electron": "^33.0.0"
   }
 }

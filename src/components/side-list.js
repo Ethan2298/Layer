@@ -168,6 +168,34 @@ function createSideListItem(itemData, idx, isSelected) {
       };
       break;
 
+    case ItemType.WEB:
+      item.className = 'side-item web-row' + (isSelected ? ' selected' : '');
+      item.dataset.type = 'web';
+      item.innerHTML = `
+        <svg class="web-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+          <circle cx="12" cy="12" r="10"/>
+          <line x1="2" y1="12" x2="22" y2="12"/>
+          <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+        </svg>
+        <span class="side-item-name">Web</span>
+        ${indicator}
+      `;
+
+      item.onclick = (e) => {
+        e.stopPropagation();
+        SideListState.setSelectedIndex(idx);
+        AppState.setViewMode('web');
+        updateSideListSelection();
+        _renderContentView();
+        _updateTabTitle();
+
+        if (AppState.isMobile()) {
+          const Mobile = window.Objectiv?.Mobile;
+          if (Mobile?.setMobileView) Mobile.setMobileView('detail');
+        }
+      };
+      break;
+
     case ItemType.UNFILED_HEADER:
       item.className = 'side-item unfiled-header';
       item.innerHTML = '<span class="side-item-name">Unfiled</span>';
@@ -283,6 +311,17 @@ async function handleSideItemClick(idx, itemData) {
     switch (itemData.type) {
       case ItemType.HOME:
         AppState.setViewMode('home');
+        _renderContentView();
+        _updateTabTitle();
+        updateSideListSelection();
+        if (AppState.isMobile()) {
+          const Mobile = window.Objectiv?.Mobile;
+          if (Mobile?.setMobileView) Mobile.setMobileView('detail');
+        }
+        break;
+
+      case ItemType.WEB:
+        AppState.setViewMode('web');
         _renderContentView();
         _updateTabTitle();
         updateSideListSelection();

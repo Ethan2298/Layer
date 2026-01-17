@@ -86,6 +86,10 @@ export function initScrollSnapSelection() {
           AppState.setViewMode('home');
           _renderContentView();
           _updateTabTitle();
+        } else if (itemData?.type === SideListState.ItemType.WEB) {
+          AppState.setViewMode('web');
+          _renderContentView();
+          _updateTabTitle();
         } else if (itemData?.type === SideListState.ItemType.OBJECTIVE) {
           AppState.setSelectedObjectiveIndex(itemData.index);
           AppState.setViewMode('objective');
@@ -135,6 +139,10 @@ function loadContentForIndex(index) {
 
   if (selectedItem.type === SideListState.ItemType.HOME) {
     AppState.setViewMode('home');
+    _renderContentView();
+    _updateTabTitle();
+  } else if (selectedItem.type === SideListState.ItemType.WEB) {
+    AppState.setViewMode('web');
     _renderContentView();
     _updateTabTitle();
   } else if (selectedItem.type === SideListState.ItemType.OBJECTIVE) {

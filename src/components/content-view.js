@@ -101,6 +101,8 @@ export function renderContentView() {
 
   if (viewMode === 'home') {
     renderHomeView();
+  } else if (viewMode === 'web') {
+    renderWebView();
   } else if (viewMode === 'folder') {
     renderFolderView();
   } else {
@@ -112,11 +114,15 @@ export function renderContentView() {
  * Render home view
  */
 export function renderHomeView() {
+  const contentPage = document.getElementById('content-page');
   const headerTitle = document.getElementById('content-header-title');
   const headerDesc = document.getElementById('content-header-description');
   const body = document.getElementById('content-body');
 
   if (!headerTitle || !body) return;
+
+  // Remove web-mode if present
+  if (contentPage) contentPage.classList.remove('web-mode');
 
   headerTitle.textContent = 'Home';
   if (headerDesc) headerDesc.textContent = 'Welcome to Objectiv';
@@ -142,14 +148,82 @@ export function renderHomeView() {
 }
 
 /**
- * Render objective view
+ * Render web view with embedded browser
  */
-export function renderObjectiveView() {
+export function renderWebView() {
+  const contentPage = document.getElementById('content-page');
   const headerTitle = document.getElementById('content-header-title');
   const headerDesc = document.getElementById('content-header-description');
   const body = document.getElementById('content-body');
 
   if (!headerTitle || !body) return;
+
+  // Apply web-mode for full-screen browser
+  if (contentPage) {
+    contentPage.classList.add('web-mode');
+  }
+
+  headerTitle.textContent = 'Web';
+  if (headerDesc) headerDesc.textContent = '';
+
+  body.innerHTML = `
+    <div class="web-view">
+      <div class="web-url-bar">
+        <input type="text" class="web-url-input" placeholder="Enter URL..." spellcheck="false" />
+        <button class="web-go-btn">Go</button>
+      </div>
+      <webview class="web-browser-frame" src="about:blank"></webview>
+    </div>
+  `;
+
+  const urlInput = body.querySelector('.web-url-input');
+  const goBtn = body.querySelector('.web-go-btn');
+  const webview = body.querySelector('.web-browser-frame');
+
+  function loadUrl() {
+    let url = urlInput.value.trim();
+    if (!url) return;
+
+    // Add https:// if no protocol specified
+    if (!/^https?:\/\//i.test(url)) {
+      url = 'https://' + url;
+    }
+
+    webview.src = url;
+  }
+
+  // Update URL bar when navigation occurs
+  webview.addEventListener('did-navigate', (e) => {
+    urlInput.value = e.url;
+  });
+
+  webview.addEventListener('did-navigate-in-page', (e) => {
+    if (e.isMainFrame) {
+      urlInput.value = e.url;
+    }
+  });
+
+  goBtn.onclick = loadUrl;
+  urlInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      loadUrl();
+    }
+  });
+}
+
+/**
+ * Render objective view
+ */
+export function renderObjectiveView() {
+  const contentPage = document.getElementById('content-page');
+  const headerTitle = document.getElementById('content-header-title');
+  const headerDesc = document.getElementById('content-header-description');
+  const body = document.getElementById('content-body');
+
+  if (!headerTitle || !body) return;
+
+  // Remove web-mode if present
+  if (contentPage) contentPage.classList.remove('web-mode');
 
   const data = AppState.getData();
   let selectedIdx = AppState.getSelectedObjectiveIndex();
@@ -194,11 +268,15 @@ export function renderFolderView() {
   const selectedItem = SideListState?.getSelectedItem();
   const folder = selectedItem?.data;
 
+  const contentPage = document.getElementById('content-page');
   const headerTitle = document.getElementById('content-header-title');
   const headerDesc = document.getElementById('content-header-description');
   const body = document.getElementById('content-body');
 
   if (!headerTitle || !body) return;
+
+  // Remove web-mode if present
+  if (contentPage) contentPage.classList.remove('web-mode');
 
   if (!folder) {
     headerTitle.textContent = 'Select a folder';
@@ -470,6 +548,7 @@ export default {
   setCallbacks,
   renderContentView,
   renderObjectiveView,
+  renderWebView,
   renderFolderView,
   renderContentPriorities,
   renderContentSteps,

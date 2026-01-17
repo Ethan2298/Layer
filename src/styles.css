@@ -46,41 +46,18 @@ body {
 }
 
 /* ========================================
-   Titlebar - hidden in browser mode
+   Window Controls
    ======================================== */
-#titlebar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  align-self: stretch;
-  height: 32px;
-  background: transparent;
-  -webkit-app-region: drag;
-  flex-shrink: 0;
-}
-
-body.browser-mode #titlebar {
-  display: none;
-}
-
-body.browser-mode #intro {
-  top: 0;
-  height: 100%;
-}
-
-body.browser-mode #app {
-  height: 100vh;
-}
-
-#titlebar-title {
-  padding-left: 12px;
-  font-size: 12px;
-  color: #666;
-}
-
 #window-controls {
   display: flex;
   -webkit-app-region: no-drag;
+}
+
+/* Hide Windows-style buttons on macOS (using native traffic lights) */
+body.platform-darwin #btn-minimize,
+body.platform-darwin #btn-maximize,
+body.platform-darwin #btn-close {
+  display: none;
 }
 
 .window-btn {
@@ -174,17 +151,6 @@ body.browser-mode #app {
 }
 
 /* ========================================
-   Main Content Wrapper
-   ======================================== */
-#content-wrapper {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-}
-
-/* ========================================
    Intro Screen
    ======================================== */
 #intro {
@@ -235,7 +201,7 @@ body.browser-mode #app {
   height: calc(100vh - 40px);
 }
 
-#app-header-bar {
+#header {
   grid-column: 1 / -1;
   grid-row: 1;
   display: flex;
@@ -243,8 +209,24 @@ body.browser-mode #app {
   height: 36px;
   background: var(--bg);
   border-bottom: 1px solid var(--border);
-  padding: 0 8px;
+  padding: 3px 8px;
   z-index: 5;
+  -webkit-app-region: drag; /* Make header draggable */
+}
+
+/* Space for macOS traffic lights */
+body.platform-darwin #header {
+  padding-left: 78px;
+}
+
+/* Reduce traffic light space in fullscreen (they move to popout bar) */
+body.platform-darwin.fullscreen #header {
+  padding-left: 16px;
+}
+
+#header button,
+#header .header-tab {
+  -webkit-app-region: no-drag; /* Keep buttons/tabs clickable */
 }
 
 #side-list {
@@ -285,18 +267,13 @@ body.browser-mode #app {
 
 #resize-handle {
   position: fixed;
-  top: 68px; /* 32px titlebar + 36px header */
+  top: 36px; /* Below header */
   left: calc(var(--sidebar-width, 280px) - 8px);
   width: 16px;
-  height: calc(100vh - 68px);
+  height: calc(100vh - 36px);
   cursor: col-resize;
   z-index: 10;
   background: transparent;
-}
-
-body.browser-mode #resize-handle {
-  top: 36px; /* 36px header only, no titlebar */
-  height: calc(100vh - 36px);
 }
 
 #resize-handle::after {
@@ -453,6 +430,105 @@ body.light-mode .side-item.selected {
 
 .side-item.home-row.selected .home-icon {
   stroke: var(--accent);
+}
+
+/* Web row in sidebar */
+.side-item.web-row {
+  gap: 8px;
+}
+
+.side-item.web-row .web-icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  stroke: var(--text-muted);
+}
+
+.side-item.web-row.selected .web-icon {
+  stroke: var(--accent);
+}
+
+/* Web mode - full screen browser */
+#content-page.web-mode {
+  max-width: none;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+#content-view > #content-page.web-mode {
+  padding-top: 0;
+}
+
+#content-page.web-mode #content-header {
+  display: none;
+}
+
+#content-page.web-mode #content-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+/* Web browser view */
+.web-view {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.web-url-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 16px 12px 16px;
+}
+
+.web-url-input {
+  flex: 1;
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  font-size: 13px;
+  outline: none;
+}
+
+.web-url-input:focus {
+  border-color: var(--accent);
+}
+
+.web-url-input::placeholder {
+  color: var(--text-muted);
+}
+
+.web-go-btn {
+  padding: 6px 12px;
+  border: none;
+  border-radius: 4px;
+  background: var(--accent);
+  color: white;
+  font-size: 13px;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.web-go-btn:hover {
+  opacity: 0.9;
+}
+
+.web-browser-frame {
+  flex: 1;
+  border: none;
+  border-top: 1px solid var(--border);
+  background: white;
+  min-height: 0;
 }
 
 /* ========================================
@@ -1727,7 +1803,7 @@ body.light-mode .excel-table tbody tr:hover td {
   }
 
   /* Hide app header bar on mobile */
-  #app-header-bar {
+  #header {
     display: none;
   }
 
