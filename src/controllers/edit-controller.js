@@ -7,6 +7,7 @@
  */
 
 import { generateId } from '../data/repository.js';
+import { Section, EditMode } from '../constants.js';
 
 // ========================================
 // Edit State
@@ -14,8 +15,8 @@ import { generateId } from '../data/repository.js';
 
 let editState = {
   active: false,
-  mode: null,        // 'add' | 'edit'
-  section: null,     // 'objectives' | 'priorities' | 'steps'
+  mode: null,        // EditMode.ADD | EditMode.EDIT
+  section: null,     // Section.OBJECTIVES | Section.PRIORITIES | Section.STEPS
   index: -1,
   item: null,
   element: null,     // The contenteditable element
@@ -123,7 +124,7 @@ export function startAdd(section, options = {}) {
 
   editState = {
     active: true,
-    mode: 'add',
+    mode: EditMode.ADD,
     section,
     index: targetIndex,
     item: newItem,
@@ -168,7 +169,7 @@ export function startEdit(section, index, element = null) {
 
   editState = {
     active: true,
-    mode: 'edit',
+    mode: EditMode.EDIT,
     section,
     index,
     item,
@@ -198,7 +199,7 @@ export function commit(value = null) {
   let needsRerender = false;
   let removedElement = false;
 
-  if (editState.mode === 'add') {
+  if (editState.mode === EditMode.ADD) {
     if (!value) {
       // Empty value - remove the placeholder item
       switch (editState.section) {
@@ -221,7 +222,7 @@ export function commit(value = null) {
       editState.item.name = value;
       saveData();
     }
-  } else if (editState.mode === 'edit') {
+  } else if (editState.mode === EditMode.EDIT) {
     if (!value) {
       // Empty value - delete the item
       switch (editState.section) {
@@ -280,7 +281,7 @@ export function cancel() {
   const selectedIdx = getSelectedObjectiveIndex();
 
   // If adding, remove the placeholder
-  if (editState.mode === 'add') {
+  if (editState.mode === EditMode.ADD) {
     switch (editState.section) {
       case 'objectives':
         data.objectives.splice(editState.index, 1);

@@ -4,14 +4,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Objectiv.go is an Electron-based goal/objective tracking application. It has two modes:
-- **Desktop GUI**: Frameless Electron window with split-pane layout
-- **Terminal TUI**: blessed-based terminal interface
+Objectiv.go is a web-based goal/objective tracking application. It has two modes:
+- **Web App**: Static web application served via `npx serve`
+- **Terminal TUI**: blessed-based terminal interface (separate app)
 
 ## Commands
 
 ```bash
-npm start          # Run Electron desktop app
+npm start          # Run web app (serves static files)
+npm run dev        # Run web app in dev mode
 npm run terminal   # Run terminal TUI (life.js)
 ```
 
@@ -21,34 +22,39 @@ No test or lint commands are currently configured.
 
 ### Dual Entry Points
 
-1. **Electron App** (`main.js` → `index.html` → `src/app.js`)
-   - Frameless window with custom titlebar
-   - Groq LLM integration for clarity scoring (requires `GROQ_API_KEY` in `.env`)
-   - IPC handlers for filesystem operations via `preload.js`
+1. **Web App** (`index.html` → `src/app.js`)
+   - Static web application using ES modules
+   - Supabase backend for data persistence
+   - Real-time sync via Supabase subscriptions
 
 2. **Terminal TUI** (`life.js` with `lib/data.js` + `lib/ui.js`)
    - blessed-based interface with Dreams→Goals→Projects→Tasks hierarchy
-   - Data stored in `life.json`
+   - Data stored in `life.json` (separate from web app)
 
 ### Frontend Modules (src/)
 
-All frontend code uses ES modules. Entry point `src/app.js` wires everything together and exposes `window.Objectiv` for legacy compatibility.
+All frontend code uses ES modules. Entry point `src/app.js` wires everything together.
+
+**Note:** `window.Objectiv` exposes modules globally for use by inline scripts in `index.html`. This is a migration artifact - future work should move inline scripts to ES modules.
 
 - **Data Layer** (`data/`)
   - `repository.js` - CRUD operations with in-memory cache, factory functions (`createObjective`, `createPriority`, `createStep`)
-  - `markdown-storage.js` - Persists objectives as .md files in user-selected folder
-  - `markdown-format.js` - Serialization/deserialization
+  - `supabase-storage.js` - Supabase persistence for objectives
+  - `folder-storage.js` - Supabase persistence for folders
 
 - **State** (`state/`)
-  - `store.js` - Centralized state: selected index, edit mode, clarity queue
-  - `side-list-state.js` - Navigation state for sidebar
+  - `side-list-state.js` - Navigation state, folder expansion, selection
+
+- **Controllers** (`controllers/`)
+  - `edit-controller.js` - Unified edit/add operations with data mutations
 
 - **Components** (`components/`)
   - `list-item.js` - Reusable list row component
   - `folder-explorer.js` - Folder picker integration
 
-- **Controllers** (`controllers/`)
-  - `edit-controller.js` - Edit mode logic
+- **Root Modules** (`src/`)
+  - `constants.js` - Centralized constants (Section, StepStatus, EditMode)
+  - `config.js` - External service configuration (Supabase)
 
 ### Data Model
 

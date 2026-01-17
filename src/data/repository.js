@@ -5,6 +5,7 @@
  * Stores objectives in PostgreSQL database.
  */
 
+import { StepStatus } from '../constants.js';
 import {
   loadAllObjectives,
   saveObjective as saveObjectiveFile,
@@ -305,7 +306,7 @@ export function createStep(name = '', orderNumber = 1) {
     name,
     loggedAt: new Date().toISOString(),
     orderNumber,
-    status: 'pending',      // pending|active|paused|completed
+    status: StepStatus.PENDING,
     elapsed: 0,             // accumulated seconds across pause/resume
     startedAt: null,        // first time timer started
     completedAt: null       // when marked complete

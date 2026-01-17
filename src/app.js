@@ -10,12 +10,12 @@
 // ========================================
 
 import * as Repository from './data/repository.js';
-import * as State from './state/store.js';
 import * as SideListState from './state/side-list-state.js';
 import * as Utils from './utils.js';
 import * as ListItem from './components/list-item.js';
 import * as EditController from './controllers/edit-controller.js';
 import * as Markdown from './utils/markdown.js';
+import * as Constants from './constants.js';
 
 // ========================================
 // Re-export for global access
@@ -24,12 +24,12 @@ import * as Markdown from './utils/markdown.js';
 // Make modules available globally for gradual migration
 window.Objectiv = {
   Repository,
-  State,
   SideListState,
   Utils,
   ListItem,
   EditController,
-  Markdown
+  Markdown,
+  Constants
 };
 
 // ========================================
@@ -59,21 +59,21 @@ if (document.readyState === 'loading') {
 
 export {
   Repository,
-  State,
-  SideListState,
-  Utils,
-  ListItem,
-  EditController,
-  Markdown
-};
-
-export default {
-  Repository,
-  State,
   SideListState,
   Utils,
   ListItem,
   EditController,
   Markdown,
+  Constants
+};
+
+export default {
+  Repository,
+  SideListState,
+  Utils,
+  ListItem,
+  EditController,
+  Markdown,
+  Constants,
   init
 };
