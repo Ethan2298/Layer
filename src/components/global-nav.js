@@ -735,7 +735,7 @@ function applyInlineAutocomplete(userInput) {
 // ========================================
 
 function navigateToResult(result) {
-  const SideListState = window.Objectiv?.SideListState;
+  const SideListState = window.Layer?.SideListState;
   const app = document.getElementById('app');
 
   if (result.type === 'objective') {
@@ -803,7 +803,7 @@ function navigateToResult(result) {
 
         // Set initial tab title from URL hostname
         try {
-          const Tabs = window.Objectiv?.Tabs;
+          const Tabs = window.Layer?.Tabs;
           const hostname = new URL(url).hostname;
           if (Tabs && hostname) {
             Tabs.updateActiveTabTitle(hostname);
@@ -881,7 +881,7 @@ function showBreadcrumb() {
  * Navigate to a folder by ID
  */
 function navigateToFolder(folderId) {
-  const SideListState = window.Objectiv?.SideListState;
+  const SideListState = window.Layer?.SideListState;
   if (!SideListState) return;
 
   AppState.setViewMode('folder');
@@ -984,7 +984,7 @@ function renderBreadcrumb(segments) {
 export function updateFromSelection() {
   if (!navInput) return;
 
-  const SideListState = window.Objectiv?.SideListState;
+  const SideListState = window.Layer?.SideListState;
   const viewMode = AppState.getViewMode();
   const folders = SideListState?.getFolders() || [];
 

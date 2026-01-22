@@ -78,8 +78,8 @@ export async function showIntro() {
   document.addEventListener('click', skip);
   document.addEventListener('keydown', handleKey);
 
-  // Type "Objectiv"
-  await typeText(introText, 'Objectiv', 80, null, () => skipped);
+  // Type "Layer"
+  await typeText(introText, 'Layer', 80, null, () => skipped);
   if (skipped) return;
 
   // Wait 300ms

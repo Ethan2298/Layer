@@ -63,7 +63,7 @@ function loadContentForIndex(index) {
   if (index === AppState.getLastLoadedIndex()) return;
   AppState.setLastLoadedIndex(index);
 
-  const SideListState = window.Objectiv?.SideListState;
+  const SideListState = window.Layer?.SideListState;
   if (!SideListState) return;
 
   const selectedItem = SideListState.getSelectedItem();
@@ -192,7 +192,7 @@ function handleObjectiveTitleEscape() {
     data.objectives.splice(promptTargetIndex, 1);
     AppState.setSelectedObjectiveIndex(Math.max(0, data.objectives.length - 1));
     // Need to notify to re-render side list
-    const SideListState = window.Objectiv?.SideListState;
+    const SideListState = window.Layer?.SideListState;
     if (SideListState) {
       // This would be handled by the app
     }
@@ -369,7 +369,7 @@ export function selectObjective(index) {
 
   if (index === selectedIdx) return;
 
-  const SideListState = window.Objectiv?.SideListState;
+  const SideListState = window.Layer?.SideListState;
   if (SideListState) {
     SideListState.selectItem(SideListState.ItemType.OBJECTIVE, index);
   }
@@ -386,7 +386,7 @@ export function selectObjective(index) {
 export function updateSideListSelection() {
   if (AppState.isMobile()) return;
 
-  const SideListState = window.Objectiv?.SideListState;
+  const SideListState = window.Layer?.SideListState;
   if (!SideListState) return;
 
   const selectedIdx = SideListState.getSelectedIndex();

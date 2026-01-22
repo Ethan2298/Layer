@@ -8,8 +8,8 @@
 // Constants
 // ========================================
 
-const SIDEBAR_COLLAPSED_KEY = 'objectiv-sidebar-collapsed';
-const SIDEBAR_WIDTH_KEY = 'objectiv-sidebar-width';
+const SIDEBAR_COLLAPSED_KEY = 'layer-sidebar-collapsed';
+const SIDEBAR_WIDTH_KEY = 'layer-sidebar-width';
 const MIN_WIDTH = 150;
 const MAX_WIDTH = 500;
 

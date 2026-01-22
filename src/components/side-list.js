@@ -8,6 +8,7 @@ import AppState from '../state/app-state.js';
 import * as TabState from '../state/tab-state.js';
 import * as TabContentManager from '../state/tab-content-manager.js';
 import * as BookmarkStorage from '../data/bookmark-storage.js';
+import * as SideListSortable from './side-list-sortable.js';
 
 // ========================================
 // Callbacks (set by app.js)
@@ -39,7 +40,7 @@ export async function renderSideList() {
   // Reset content load tracking when list is rebuilt
   AppState.resetContentLoadTracking();
 
-  const SideListState = window.Objectiv?.SideListState;
+  const SideListState = window.Layer?.SideListState;
   const data = AppState.getData();
   const promptMode = AppState.getPromptMode();
   const promptTargetSection = AppState.getPromptTargetSection();
@@ -90,6 +91,9 @@ export async function renderSideList() {
     lucide.createIcons();
   }
 
+  // Initialize jQuery UI Sortable for drag-drop reordering
+  SideListSortable.setRenderCallback(renderSideList);
+  SideListSortable.initSortable();
 }
 
 /**
@@ -105,7 +109,6 @@ function renderSideListBasic(container) {
     item.className = 'side-item' + (!isMobile && index === selectedIdx ? ' selected' : '');
     item.innerHTML = `
       <span class="side-item-name">${obj.name}</span>
-      <span class="side-item-indicator">\u25CF</span>
     `;
     item.onclick = () => {
       AppState.setSelectedObjectiveIndex(index);
@@ -123,7 +126,7 @@ function renderSideListBasic(container) {
  * Create a side list item element based on type
  */
 function createSideListItem(itemData, idx, isSelected) {
-  const SideListState = window.Objectiv?.SideListState;
+  const SideListState = window.Layer?.SideListState;
   const ItemType = SideListState?.ItemType || {};
   const promptMode = AppState.getPromptMode();
   const promptTargetSection = AppState.getPromptTargetSection();
@@ -137,7 +140,6 @@ function createSideListItem(itemData, idx, isSelected) {
     item.dataset.depth = itemData.depth;
   }
 
-  const indicator = '<span class="side-item-indicator">\u25CF</span>';
 
   switch (itemData.type) {
     case ItemType.HOME:
@@ -149,8 +151,7 @@ function createSideListItem(itemData, idx, isSelected) {
           <polyline points="9 22 9 12 15 12 15 22"/>
         </svg>
         <span class="side-item-name">Home</span>
-        ${indicator}
-      `;
+              `;
 
       item.onclick = (e) => {
         e.stopPropagation();
@@ -161,7 +162,7 @@ function createSideListItem(itemData, idx, isSelected) {
         _updateTabTitle();
 
         if (AppState.isMobile()) {
-          const Mobile = window.Objectiv?.Mobile;
+          const Mobile = window.Layer?.Mobile;
           if (Mobile?.setMobileView) Mobile.setMobileView('detail');
         }
       };
@@ -179,14 +180,14 @@ function createSideListItem(itemData, idx, isSelected) {
       item.className = 'side-item folder-row' + (isSelected ? ' selected' : '');
       item.dataset.type = 'folder';
       item.dataset.folderId = itemData.folderId;
+      item.dataset.sortable = 'true';
 
       const folderIcon = isExpanded
         ? '<svg class="folder-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>'
         : '<svg class="folder-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>';
 
       item.innerHTML = `
-        <button class="folder-toggle">${folderIcon}</button><span class="folder-name">${itemData.name || 'Unnamed Folder'}</span>${indicator}
-      `;
+        <button class="folder-toggle">${folderIcon}</button><span class="folder-name">${itemData.name || 'Unnamed Folder'}</span>      `;
 
       item.onclick = (e) => {
         e.stopPropagation();
@@ -204,7 +205,7 @@ function createSideListItem(itemData, idx, isSelected) {
         _updateTabTitle();
 
         if (AppState.isMobile()) {
-          const Mobile = window.Objectiv?.Mobile;
+          const Mobile = window.Layer?.Mobile;
           if (Mobile?.setMobileView) Mobile.setMobileView('detail');
         }
       };
@@ -225,6 +226,7 @@ function createSideListItem(itemData, idx, isSelected) {
       item.dataset.objIndex = itemData.index;
       item.dataset.objectiveId = itemData.objectiveId;
       item.dataset.folderId = itemData.folderId || '';
+      item.dataset.sortable = 'true';
 
       const objectiveIcon = `<svg class="objective-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
         <circle cx="12" cy="12" r="10"/>
@@ -240,8 +242,7 @@ function createSideListItem(itemData, idx, isSelected) {
       } else {
         item.innerHTML = `
           ${objectiveIcon}
-          <span class="side-item-name">${itemData.name}</span>${indicator}
-        `;
+          <span class="side-item-name">${itemData.name}</span>        `;
         item.onclick = () => handleSideItemClick(idx, itemData);
 
         item.addEventListener('contextmenu', (e) => {
@@ -259,6 +260,7 @@ function createSideListItem(itemData, idx, isSelected) {
       item.dataset.type = 'bookmark';
       item.dataset.bookmarkId = itemData.bookmarkId;
       item.dataset.folderId = itemData.folderId || '';
+      item.dataset.sortable = 'true';
 
       // Favicon or globe fallback
       const faviconHtml = itemData.faviconUrl
@@ -267,8 +269,7 @@ function createSideListItem(itemData, idx, isSelected) {
 
       item.innerHTML = `
         ${faviconHtml}
-        <span class="side-item-name">${itemData.name}</span>${indicator}
-      `;
+        <span class="side-item-name">${itemData.name}</span>      `;
 
       item.onclick = () => handleBookmarkClick(idx, itemData);
 
@@ -286,6 +287,7 @@ function createSideListItem(itemData, idx, isSelected) {
       item.dataset.type = 'note';
       item.dataset.noteId = itemData.noteId;
       item.dataset.folderId = itemData.folderId || '';
+      item.dataset.sortable = 'true';
 
       // Note icon (document/page icon)
       const noteIcon = `<svg class="note-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
@@ -297,8 +299,7 @@ function createSideListItem(itemData, idx, isSelected) {
 
       item.innerHTML = `
         ${noteIcon}
-        <span class="side-item-name">${itemData.name || 'Untitled Note'}</span>${indicator}
-      `;
+        <span class="side-item-name">${itemData.name || 'Untitled Note'}</span>      `;
 
       item.onclick = () => handleNoteClick(idx, itemData);
 
@@ -326,9 +327,9 @@ function createSideListItem(itemData, idx, isSelected) {
  * Handle click on side list item
  */
 async function handleSideItemClick(idx, itemData) {
-  const SideListState = window.Objectiv?.SideListState;
+  const SideListState = window.Layer?.SideListState;
   const ItemType = SideListState?.ItemType || {};
-  const PromptController = window.Objectiv?.PromptController;
+  const PromptController = window.Layer?.PromptController;
 
   // Clear hover preview
   AppState.setHoverPreviewActive(false);
@@ -350,7 +351,7 @@ async function handleSideItemClick(idx, itemData) {
         _updateTabTitle();
         updateSideListSelection();
         if (AppState.isMobile()) {
-          const Mobile = window.Objectiv?.Mobile;
+          const Mobile = window.Layer?.Mobile;
           if (Mobile?.setMobileView) Mobile.setMobileView('detail');
         }
         break;
@@ -363,7 +364,7 @@ async function handleSideItemClick(idx, itemData) {
         _updateTabTitle();
         updateSideListSelection();
         if (AppState.isMobile()) {
-          const Mobile = window.Objectiv?.Mobile;
+          const Mobile = window.Layer?.Mobile;
           if (Mobile?.setMobileView) Mobile.setMobileView('detail');
         }
         break;
@@ -374,7 +375,7 @@ async function handleSideItemClick(idx, itemData) {
         _updateTabTitle();
         updateSideListSelection();
         if (AppState.isMobile()) {
-          const Mobile = window.Objectiv?.Mobile;
+          const Mobile = window.Layer?.Mobile;
           if (Mobile?.setMobileView) Mobile.setMobileView('detail');
         }
         break;
@@ -395,7 +396,7 @@ async function handleSideItemClick(idx, itemData) {
 export function updateSideListSelection() {
   if (AppState.isMobile()) return;
 
-  const SideListState = window.Objectiv?.SideListState;
+  const SideListState = window.Layer?.SideListState;
   if (!SideListState) return;
 
   const selectedIdx = SideListState.getSelectedIndex();
@@ -416,8 +417,8 @@ export function updateSideListSelection() {
 // ========================================
 
 function showObjectiveContextMenu(e, itemData) {
-  const ContextMenu = window.Objectiv?.ContextMenu;
-  const DeleteModal = window.Objectiv?.DeleteModal;
+  const ContextMenu = window.Layer?.ContextMenu;
+  const DeleteModal = window.Layer?.DeleteModal;
 
   if (!ContextMenu) return;
 
@@ -440,8 +441,8 @@ function showObjectiveContextMenu(e, itemData) {
                 const objective = data.objectives.find(o => o.id === itemData.objectiveId);
                 if (!objective) return;
 
-                if (window.Objectiv?.Repository?.deleteOneObjective) {
-                  await window.Objectiv.Repository.deleteOneObjective(objective);
+                if (window.Layer?.Repository?.deleteOneObjective) {
+                  await window.Layer.Repository.deleteOneObjective(objective);
                 }
 
                 data.objectives = data.objectives.filter(o => o.id !== itemData.objectiveId);
@@ -465,8 +466,8 @@ function showObjectiveContextMenu(e, itemData) {
 }
 
 function showFolderContextMenu(e, itemData) {
-  const ContextMenu = window.Objectiv?.ContextMenu;
-  const DeleteModal = window.Objectiv?.DeleteModal;
+  const ContextMenu = window.Layer?.ContextMenu;
+  const DeleteModal = window.Layer?.DeleteModal;
 
   if (!ContextMenu) return;
 
@@ -487,14 +488,14 @@ function showFolderContextMenu(e, itemData) {
               try {
                 const data = AppState.getData();
 
-                if (window.Objectiv?.Repository?.deleteFolder) {
-                  await window.Objectiv.Repository.deleteFolder(itemData.folderId);
+                if (window.Layer?.Repository?.deleteFolder) {
+                  await window.Layer.Repository.deleteFolder(itemData.folderId);
                 }
 
                 data.folders = data.folders.filter(f => f.id !== itemData.folderId);
 
                 // Move objectives in this folder to unfiled
-                const Repository = window.Objectiv?.Repository;
+                const Repository = window.Layer?.Repository;
                 for (const obj of data.objectives) {
                   if (obj.folderId === itemData.folderId) {
                     obj.folderId = null;
@@ -520,8 +521,8 @@ function showFolderContextMenu(e, itemData) {
  * Handle click on a bookmark item
  */
 function handleBookmarkClick(idx, itemData) {
-  const SideListState = window.Objectiv?.SideListState;
-  const GlobalNav = window.Objectiv?.GlobalNav;
+  const SideListState = window.Layer?.SideListState;
+  const GlobalNav = window.Layer?.GlobalNav;
 
   // Update selection
   SideListState.setSelectedIndex(idx);
@@ -551,7 +552,7 @@ function handleBookmarkClick(idx, itemData) {
   }, 50);
 
   if (AppState.isMobile()) {
-    const Mobile = window.Objectiv?.Mobile;
+    const Mobile = window.Layer?.Mobile;
     if (Mobile?.setMobileView) Mobile.setMobileView('detail');
   }
 }
@@ -560,7 +561,7 @@ function handleBookmarkClick(idx, itemData) {
  * Handle click on a note item
  */
 function handleNoteClick(idx, itemData) {
-  const SideListState = window.Objectiv?.SideListState;
+  const SideListState = window.Layer?.SideListState;
 
   // Update selection
   SideListState.setSelectedIndex(idx);
@@ -574,7 +575,7 @@ function handleNoteClick(idx, itemData) {
   _updateTabTitle();
 
   if (AppState.isMobile()) {
-    const Mobile = window.Objectiv?.Mobile;
+    const Mobile = window.Layer?.Mobile;
     if (Mobile?.setMobileView) Mobile.setMobileView('detail');
   }
 }
@@ -583,8 +584,8 @@ function handleNoteClick(idx, itemData) {
  * Show context menu for bookmark items
  */
 function showBookmarkContextMenu(e, itemData) {
-  const ContextMenu = window.Objectiv?.ContextMenu;
-  const DeleteModal = window.Objectiv?.DeleteModal;
+  const ContextMenu = window.Layer?.ContextMenu;
+  const DeleteModal = window.Layer?.DeleteModal;
 
   if (!ContextMenu) return;
 
@@ -620,9 +621,9 @@ function showBookmarkContextMenu(e, itemData) {
  * Show context menu for note items
  */
 function showNoteContextMenu(e, itemData) {
-  const ContextMenu = window.Objectiv?.ContextMenu;
-  const DeleteModal = window.Objectiv?.DeleteModal;
-  const NoteStorage = window.Objectiv?.NoteStorage;
+  const ContextMenu = window.Layer?.ContextMenu;
+  const DeleteModal = window.Layer?.DeleteModal;
+  const NoteStorage = window.Layer?.NoteStorage;
 
   if (!ContextMenu) return;
 
@@ -820,7 +821,7 @@ function setupDropTarget(element, targetType, targetId) {
 async function handleObjectiveDrop(dragId, dragData, insertPosition) {
   if (!insertPosition) return;
 
-  const Repository = window.Objectiv?.Repository;
+  const Repository = window.Layer?.Repository;
   if (!Repository?.updateObjectiveOrder) return;
 
   const data = AppState.getData();
@@ -849,7 +850,7 @@ async function handleObjectiveDrop(dragId, dragData, insertPosition) {
 async function handleFolderDrop(dragId, dragData, insertPosition) {
   if (!insertPosition) return;
 
-  const Repository = window.Objectiv?.Repository;
+  const Repository = window.Layer?.Repository;
   if (!Repository?.updateFolder) return;
 
   const data = AppState.getData();
@@ -914,7 +915,7 @@ async function handleBookmarkDrop(dragId, dragData, insertPosition) {
 async function handleNoteDrop(dragId, dragData, insertPosition) {
   if (!insertPosition) return;
 
-  const NoteStorage = window.Objectiv?.NoteStorage;
+  const NoteStorage = window.Layer?.NoteStorage;
   if (!NoteStorage?.updateNoteOrder) return;
 
   const { targetId, targetType, position, folderId } = insertPosition;

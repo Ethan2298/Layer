@@ -31,7 +31,7 @@ const state = {
   nextTabId: 1
 };
 
-const STORAGE_KEY = 'objectiv-tab-state';
+const STORAGE_KEY = 'layer-tab-state';
 
 // ========================================
 // Internal Helpers

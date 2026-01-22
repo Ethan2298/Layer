@@ -4,9 +4,11 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <link rel="icon" href="data:,">
-  <title>Objectiv</title>
+  <title>Layer</title>
   <link rel="stylesheet" href="src/styles.css">
   <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <script src="https://code.jquery.com/ui/1.13.2/jquery-ui.min.js"></script>
   <script type="module" src="src/app.js"></script>
 </head>
 <body>
@@ -94,6 +96,29 @@
                 <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
               </svg>
             </button>
+          </div>
+        </div>
+        <!-- Note Toolbar (visible only for notes) -->
+        <div id="note-toolbar-row" class="note-toolbar-row">
+          <div class="note-toolbar-group">
+            <button class="note-toolbar-btn" data-command="bold" title="Bold (Ctrl+B)">B</button>
+            <button class="note-toolbar-btn" data-command="italic" title="Italic (Ctrl+I)"><em>I</em></button>
+            <button class="note-toolbar-btn" data-command="strike" title="Strikethrough"><s>S</s></button>
+            <button class="note-toolbar-btn" data-command="code" title="Inline Code">&lt;&gt;</button>
+          </div>
+          <div class="note-toolbar-group">
+            <button class="note-toolbar-btn" data-command="h1" title="Heading 1">H1</button>
+            <button class="note-toolbar-btn" data-command="h2" title="Heading 2">H2</button>
+            <button class="note-toolbar-btn" data-command="h3" title="Heading 3">H3</button>
+          </div>
+          <div class="note-toolbar-group">
+            <button class="note-toolbar-btn" data-command="bullet" title="Bullet List">•</button>
+            <button class="note-toolbar-btn" data-command="ordered" title="Numbered List">1.</button>
+          </div>
+          <div class="note-toolbar-group">
+            <button class="note-toolbar-btn" data-command="blockquote" title="Blockquote">"</button>
+            <button class="note-toolbar-btn" data-command="codeblock" title="Code Block">{ }</button>
+            <button class="note-toolbar-btn" data-command="hr" title="Horizontal Rule">—</button>
           </div>
         </div>
         <div id="content-page">

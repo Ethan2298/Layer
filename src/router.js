@@ -6,7 +6,7 @@
  *
  * URL Structure:
  * - /#/ or /#/home      -> Home view
- * - /#/objective/{id}   -> Objective view
+ * - /#/objective/{id}   -> Layere view
  * - /#/folder/{id}      -> Folder view
  * - /#/settings         -> Settings view
  */
@@ -103,9 +103,9 @@ export function updateURL(type, id) {
  */
 export function updateWindowTitle(title) {
   if (title) {
-    document.title = `${title} - Objectiv`;
+    document.title = `${title} - Layer`;
   } else {
-    document.title = 'Objectiv';
+    document.title = 'Layer';
   }
 }
 
@@ -117,21 +117,21 @@ export function updateWindowTitle(title) {
 export function updateWindowTitleForSelection(type, name) {
   switch (type) {
     case 'home':
-      document.title = 'Objectiv';
+      document.title = 'Layer';
       break;
     case 'objective':
     case 'folder':
       if (name) {
-        document.title = `${name} - Objectiv`;
+        document.title = `${name} - Layer`;
       } else {
-        document.title = 'Objectiv';
+        document.title = 'Layer';
       }
       break;
     case 'settings':
-      document.title = 'Settings - Objectiv';
+      document.title = 'Settings - Layer';
       break;
     default:
-      document.title = 'Objectiv';
+      document.title = 'Layer';
   }
 }
 

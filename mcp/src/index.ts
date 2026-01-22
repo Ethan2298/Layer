@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 /**
- * Objectiv MCP Server
+ * Layer MCP Server
  *
- * Read-only MCP server for accessing Objectiv goal tracking data.
+ * Read-only MCP server for accessing Layer goal tracking data.
  * Provides tools to list and view objectives, priorities, and steps.
  */
 
@@ -49,6 +49,29 @@ interface Objective {
   priorities: Priority[];
   steps: Step[];
   nextStep: NextStep | null;
+  folderId: string | null;
+  orderIndex: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface Note {
+  [key: string]: unknown;
+  id: string;
+  name: string;
+  content: string;
+  folderId: string | null;
+  orderIndex: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface Folder {
+  [key: string]: unknown;
+  id: string;
+  name: string;
+  parentId: string | null;
+  orderIndex: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -83,6 +106,8 @@ async function loadAllObjectives(): Promise<Objective[]> {
     priorities: row.priorities || [],
     steps: row.steps || [],
     nextStep: row.next_step || null,
+    folderId: row.folder_id || null,
+    orderIndex: row.order_index || 0,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   }));
@@ -111,12 +136,14 @@ async function getObjectiveById(id: string): Promise<Objective | null> {
     priorities: data.priorities || [],
     steps: data.steps || [],
     nextStep: data.next_step || null,
+    folderId: data.folder_id || null,
+    orderIndex: data.order_index || 0,
     createdAt: data.created_at,
     updatedAt: data.updated_at,
   };
 }
 
-async function createNewObjective(name: string, description: string): Promise<Objective> {
+async function createNewObjective(name: string, description: string, folderId: string | null = null): Promise<Objective> {
   const client = getClient();
   const now = new Date().toISOString();
 
@@ -128,6 +155,8 @@ async function createNewObjective(name: string, description: string): Promise<Ob
       priorities: [],
       steps: [],
       next_step: null,
+      folder_id: folderId,
+      order_index: 0,
       created_at: now,
       updated_at: now,
     })
@@ -145,6 +174,8 @@ async function createNewObjective(name: string, description: string): Promise<Ob
     priorities: [],
     steps: [],
     nextStep: null,
+    folderId: data.folder_id || null,
+    orderIndex: data.order_index || 0,
     createdAt: data.created_at,
     updatedAt: data.updated_at,
   };
@@ -160,12 +191,251 @@ async function saveObjective(objective: Objective): Promise<void> {
       priorities: objective.priorities,
       steps: objective.steps,
       next_step: objective.nextStep,
+      folder_id: objective.folderId,
+      order_index: objective.orderIndex,
       updated_at: new Date().toISOString(),
     })
     .eq("id", objective.id);
 
   if (error) {
     throw new Error(`Failed to save objective: ${error.message}`);
+  }
+}
+
+// ========================================
+// Note Data Access Functions
+// ========================================
+
+async function loadAllNotes(): Promise<Note[]> {
+  const client = getClient();
+
+  const { data, error } = await client
+    .from("notes")
+    .select("*")
+    .order("order_index", { ascending: true });
+
+  if (error) {
+    throw new Error(`Failed to load notes: ${error.message}`);
+  }
+
+  return (data || []).map((row) => ({
+    id: row.id,
+    name: row.name || "",
+    content: row.content || "",
+    folderId: row.folder_id || null,
+    orderIndex: row.order_index || 0,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  }));
+}
+
+async function getNoteById(id: string): Promise<Note | null> {
+  const client = getClient();
+
+  const { data, error } = await client
+    .from("notes")
+    .select("*")
+    .eq("id", id)
+    .single();
+
+  if (error) {
+    if (error.code === "PGRST116") {
+      return null;
+    }
+    throw new Error(`Failed to load note: ${error.message}`);
+  }
+
+  return {
+    id: data.id,
+    name: data.name || "",
+    content: data.content || "",
+    folderId: data.folder_id || null,
+    orderIndex: data.order_index || 0,
+    createdAt: data.created_at,
+    updatedAt: data.updated_at,
+  };
+}
+
+async function createNewNote(name: string, content: string, folderId: string | null = null): Promise<Note> {
+  const client = getClient();
+  const now = new Date().toISOString();
+
+  const { data, error } = await client
+    .from("notes")
+    .insert({
+      name,
+      content,
+      folder_id: folderId,
+      order_index: 0,
+      updated_at: now,
+    })
+    .select()
+    .single();
+
+  if (error) {
+    throw new Error(`Failed to create note: ${error.message}`);
+  }
+
+  return {
+    id: data.id,
+    name: data.name || "",
+    content: data.content || "",
+    folderId: data.folder_id || null,
+    orderIndex: data.order_index || 0,
+    createdAt: data.created_at,
+    updatedAt: data.updated_at,
+  };
+}
+
+async function saveNote(note: Note): Promise<void> {
+  const client = getClient();
+
+  const { error } = await client
+    .from("notes")
+    .update({
+      name: note.name,
+      content: note.content,
+      folder_id: note.folderId,
+      order_index: note.orderIndex,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", note.id);
+
+  if (error) {
+    throw new Error(`Failed to save note: ${error.message}`);
+  }
+}
+
+async function deleteNoteById(id: string): Promise<void> {
+  const client = getClient();
+
+  const { error } = await client
+    .from("notes")
+    .delete()
+    .eq("id", id);
+
+  if (error) {
+    throw new Error(`Failed to delete note: ${error.message}`);
+  }
+}
+
+// ========================================
+// Folder Data Access Functions
+// ========================================
+
+async function loadAllFolders(): Promise<Folder[]> {
+  const client = getClient();
+
+  const { data, error } = await client
+    .from("folders")
+    .select("*")
+    .order("order_index", { ascending: true });
+
+  if (error) {
+    throw new Error(`Failed to load folders: ${error.message}`);
+  }
+
+  return (data || []).map((row) => ({
+    id: row.id,
+    name: row.name || "",
+    parentId: row.parent_id || null,
+    orderIndex: row.order_index || 0,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  }));
+}
+
+async function getFolderById(id: string): Promise<Folder | null> {
+  const client = getClient();
+
+  const { data, error } = await client
+    .from("folders")
+    .select("*")
+    .eq("id", id)
+    .single();
+
+  if (error) {
+    if (error.code === "PGRST116") {
+      return null;
+    }
+    throw new Error(`Failed to load folder: ${error.message}`);
+  }
+
+  return {
+    id: data.id,
+    name: data.name || "",
+    parentId: data.parent_id || null,
+    orderIndex: data.order_index || 0,
+    createdAt: data.created_at,
+    updatedAt: data.updated_at,
+  };
+}
+
+async function createNewFolder(name: string, parentId: string | null = null): Promise<Folder> {
+  const client = getClient();
+  const now = new Date().toISOString();
+
+  const { data, error } = await client
+    .from("folders")
+    .insert({
+      name,
+      parent_id: parentId,
+      order_index: 0,
+      updated_at: now,
+    })
+    .select()
+    .single();
+
+  if (error) {
+    throw new Error(`Failed to create folder: ${error.message}`);
+  }
+
+  return {
+    id: data.id,
+    name: data.name || "",
+    parentId: data.parent_id || null,
+    orderIndex: data.order_index || 0,
+    createdAt: data.created_at,
+    updatedAt: data.updated_at,
+  };
+}
+
+async function saveFolder(folder: Folder): Promise<void> {
+  const client = getClient();
+
+  const { error } = await client
+    .from("folders")
+    .update({
+      name: folder.name,
+      parent_id: folder.parentId,
+      order_index: folder.orderIndex,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", folder.id);
+
+  if (error) {
+    throw new Error(`Failed to save folder: ${error.message}`);
+  }
+}
+
+async function deleteFolderById(id: string): Promise<void> {
+  const client = getClient();
+
+  // First, unfile all items in this folder (set folder_id to null)
+  await client.from("objectives").update({ folder_id: null }).eq("folder_id", id);
+  await client.from("notes").update({ folder_id: null }).eq("folder_id", id);
+
+  // Move child folders to root (set parent_id to null)
+  await client.from("folders").update({ parent_id: null }).eq("parent_id", id);
+
+  // Now delete the folder
+  const { error } = await client
+    .from("folders")
+    .delete()
+    .eq("id", id);
+
+  if (error) {
+    throw new Error(`Failed to delete folder: ${error.message}`);
   }
 }
 
@@ -184,7 +454,7 @@ function formatDuration(seconds: number): string {
 
 // Create MCP server
 const server = new McpServer({
-  name: "objectiv-mcp-server",
+  name: "layer-mcp-server",
   version: "1.0.0",
 });
 
@@ -203,10 +473,10 @@ const GetObjectiveSchema = z.object({
 
 // Register tools
 server.registerTool(
-  "objectiv_list_objectives",
+  "layer_list_objectives",
   {
     title: "List Objectives",
-    description: `List all objectives in Objectiv with summary information.
+    description: `List all objectives in Layer with summary information.
 
 Returns a list of all objectives including their name, description,
 number of priorities, number of steps, and active step if any.
@@ -275,7 +545,7 @@ Returns:
 );
 
 server.registerTool(
-  "objectiv_get_objective",
+  "layer_get_objective",
   {
     title: "Get Objective",
     description: `Get full details of a single objective by ID.
@@ -343,7 +613,7 @@ Returns:
 );
 
 server.registerTool(
-  "objectiv_get_stats",
+  "layer_get_stats",
   {
     title: "Get Statistics",
     description: `Get aggregate statistics across all objectives.
@@ -417,7 +687,7 @@ Returns:
 
 // Create Objective
 server.registerTool(
-  "objectiv_create_objective",
+  "layer_create_objective",
   {
     title: "Create Objective",
     description: `Create a new objective.
@@ -457,7 +727,7 @@ Returns:
 
 // Update Objective
 server.registerTool(
-  "objectiv_update_objective",
+  "layer_update_objective",
   {
     title: "Update Objective",
     description: `Update an objective's name and/or description.
@@ -505,7 +775,7 @@ Returns:
 
 // Set Next Step
 server.registerTool(
-  "objectiv_set_next_step",
+  "layer_set_next_step",
   {
     title: "Set Next Step",
     description: `Set or clear the next step for an objective.
@@ -557,7 +827,7 @@ Returns:
 
 // Add Step
 server.registerTool(
-  "objectiv_add_step",
+  "layer_add_step",
   {
     title: "Add Step",
     description: `Add a new step to an objective.
@@ -616,7 +886,7 @@ Returns:
 
 // Update Step
 server.registerTool(
-  "objectiv_update_step",
+  "layer_update_step",
   {
     title: "Update Step",
     description: `Update a step's name or status.
@@ -676,7 +946,7 @@ Returns:
 
 // Delete Step
 server.registerTool(
-  "objectiv_delete_step",
+  "layer_delete_step",
   {
     title: "Delete Step",
     description: `Remove a step from an objective.
@@ -728,7 +998,7 @@ Returns:
 
 // Add Priority
 server.registerTool(
-  "objectiv_add_priority",
+  "layer_add_priority",
   {
     title: "Add Priority",
     description: `Add a new priority to an objective.
@@ -781,7 +1051,7 @@ Returns:
 
 // Update Priority
 server.registerTool(
-  "objectiv_update_priority",
+  "layer_update_priority",
   {
     title: "Update Priority",
     description: `Update a priority's name or description.
@@ -836,7 +1106,7 @@ Returns:
 
 // Delete Priority
 server.registerTool(
-  "objectiv_delete_priority",
+  "layer_delete_priority",
   {
     title: "Delete Priority",
     description: `Remove a priority from an objective.
@@ -884,11 +1154,835 @@ Returns:
   }
 );
 
+// ========================================
+// Note Tools
+// ========================================
+
+server.registerTool(
+  "layer_list_notes",
+  {
+    title: "List Notes",
+    description: `List all notes in Layer with summary information.
+
+Returns a list of all notes including their name and folder.
+
+Args:
+  - folder_id (string, optional): Filter by folder ID. Use "null" for unfiled notes.
+  - include_content (boolean): Include note content in response (default: false)
+
+Returns:
+  Array of notes with id, name, folderId, orderIndex, timestamps`,
+    inputSchema: z.object({
+      folder_id: z.string().optional().describe("Filter by folder ID. Use 'null' for unfiled notes."),
+      include_content: z.boolean().default(false).describe("Include note content in response"),
+    }).strict(),
+    annotations: {
+      readOnlyHint: true,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: false,
+    },
+  },
+  async (params) => {
+    try {
+      let notes = await loadAllNotes();
+
+      // Filter by folder if specified
+      if (params.folder_id !== undefined) {
+        const targetFolderId = params.folder_id === "null" ? null : params.folder_id;
+        notes = notes.filter((n) => n.folderId === targetFolderId);
+      }
+
+      const result = notes.map((note) => {
+        const summary: Record<string, unknown> = {
+          id: note.id,
+          name: note.name,
+          folderId: note.folderId,
+          orderIndex: note.orderIndex,
+          createdAt: note.createdAt,
+          updatedAt: note.updatedAt,
+        };
+
+        if (params.include_content) {
+          summary.content = note.content;
+        }
+
+        return summary;
+      });
+
+      const output = {
+        count: result.length,
+        notes: result,
+      };
+
+      return {
+        content: [{ type: "text", text: JSON.stringify(output, null, 2) }],
+        structuredContent: output,
+      };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      return {
+        content: [{ type: "text", text: `Error: ${message}` }],
+      };
+    }
+  }
+);
+
+server.registerTool(
+  "layer_get_note",
+  {
+    title: "Get Note",
+    description: `Get full details of a single note by ID.
+
+Returns complete note data including content.
+
+Args:
+  - id (string): The UUID of the note
+
+Returns:
+  Complete note with id, name, content, folderId, orderIndex, timestamps`,
+    inputSchema: z.object({
+      id: z.string().min(1, "Note ID is required").describe("The UUID of the note to retrieve"),
+    }).strict(),
+    annotations: {
+      readOnlyHint: true,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: false,
+    },
+  },
+  async (params) => {
+    try {
+      const note = await getNoteById(params.id);
+
+      if (!note) {
+        return {
+          content: [{
+            type: "text",
+            text: `Error: Note not found with ID '${params.id}'`
+          }],
+        };
+      }
+
+      return {
+        content: [{ type: "text", text: JSON.stringify(note, null, 2) }],
+        structuredContent: note,
+      };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      return {
+        content: [{ type: "text", text: `Error: ${message}` }],
+      };
+    }
+  }
+);
+
+server.registerTool(
+  "layer_create_note",
+  {
+    title: "Create Note",
+    description: `Create a new note.
+
+Args:
+  - name (string): The name/title of the note
+  - content (string, optional): Note content (HTML)
+  - folder_id (string, optional): Folder to place the note in
+
+Returns:
+  The newly created note with its generated ID`,
+    inputSchema: z.object({
+      name: z.string().min(1, "Name is required").describe("The name of the note"),
+      content: z.string().default("").describe("Note content (HTML)"),
+      folder_id: z.string().nullable().optional().describe("Folder ID to place the note in"),
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      destructiveHint: false,
+      idempotentHint: false,
+      openWorldHint: false,
+    },
+  },
+  async (params) => {
+    try {
+      const note = await createNewNote(params.name, params.content, params.folder_id || null);
+      return {
+        content: [{ type: "text", text: JSON.stringify(note, null, 2) }],
+        structuredContent: note,
+      };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      return {
+        content: [{ type: "text", text: `Error: ${message}` }],
+      };
+    }
+  }
+);
+
+server.registerTool(
+  "layer_update_note",
+  {
+    title: "Update Note",
+    description: `Update a note's name and/or content.
+
+Args:
+  - id (string): The note UUID
+  - name (string, optional): New name
+  - content (string, optional): New content (HTML)
+
+Returns:
+  The updated note`,
+    inputSchema: z.object({
+      id: z.string().min(1, "Note ID is required"),
+      name: z.string().optional().describe("New name"),
+      content: z.string().optional().describe("New content (HTML)"),
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: false,
+    },
+  },
+  async (params) => {
+    try {
+      const note = await getNoteById(params.id);
+      if (!note) {
+        return { content: [{ type: "text", text: `Error: Note not found` }] };
+      }
+
+      if (params.name !== undefined) note.name = params.name;
+      if (params.content !== undefined) note.content = params.content;
+
+      await saveNote(note);
+      return {
+        content: [{ type: "text", text: JSON.stringify(note, null, 2) }],
+        structuredContent: note,
+      };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      return { content: [{ type: "text", text: `Error: ${message}` }] };
+    }
+  }
+);
+
+server.registerTool(
+  "layer_delete_note",
+  {
+    title: "Delete Note",
+    description: `Delete a note.
+
+Args:
+  - id (string): The note UUID to delete
+
+Returns:
+  Confirmation of deletion`,
+    inputSchema: z.object({
+      id: z.string().min(1, "Note ID is required"),
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      destructiveHint: true,
+      idempotentHint: true,
+      openWorldHint: false,
+    },
+  },
+  async (params) => {
+    try {
+      const note = await getNoteById(params.id);
+      if (!note) {
+        return { content: [{ type: "text", text: `Error: Note not found` }] };
+      }
+
+      await deleteNoteById(params.id);
+      return {
+        content: [{ type: "text", text: JSON.stringify({ deleted: true, id: params.id }, null, 2) }],
+        structuredContent: { deleted: true, id: params.id },
+      };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      return { content: [{ type: "text", text: `Error: ${message}` }] };
+    }
+  }
+);
+
+// ========================================
+// Folder Tools
+// ========================================
+
+server.registerTool(
+  "layer_list_folders",
+  {
+    title: "List Folders",
+    description: `List all folders in Layer with hierarchy information.
+
+Returns a list of all folders including their parent-child relationships.
+
+Returns:
+  Array of folders with id, name, parentId, orderIndex, timestamps`,
+    inputSchema: z.object({}).strict(),
+    annotations: {
+      readOnlyHint: true,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: false,
+    },
+  },
+  async () => {
+    try {
+      const folders = await loadAllFolders();
+
+      const output = {
+        count: folders.length,
+        folders: folders,
+      };
+
+      return {
+        content: [{ type: "text", text: JSON.stringify(output, null, 2) }],
+        structuredContent: output,
+      };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      return {
+        content: [{ type: "text", text: `Error: ${message}` }],
+      };
+    }
+  }
+);
+
+server.registerTool(
+  "layer_get_folder",
+  {
+    title: "Get Folder",
+    description: `Get folder details with optional contents.
+
+Args:
+  - id (string): The folder UUID
+  - include_contents (boolean): Include objectives and notes in the folder (default: false)
+
+Returns:
+  Folder with optional contents (objectives, notes, child folders)`,
+    inputSchema: z.object({
+      id: z.string().min(1, "Folder ID is required"),
+      include_contents: z.boolean().default(false).describe("Include folder contents"),
+    }).strict(),
+    annotations: {
+      readOnlyHint: true,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: false,
+    },
+  },
+  async (params) => {
+    try {
+      const folder = await getFolderById(params.id);
+
+      if (!folder) {
+        return {
+          content: [{
+            type: "text",
+            text: `Error: Folder not found with ID '${params.id}'`
+          }],
+        };
+      }
+
+      const output: Record<string, unknown> = { ...folder };
+
+      if (params.include_contents) {
+        const [objectives, notes, folders] = await Promise.all([
+          loadAllObjectives(),
+          loadAllNotes(),
+          loadAllFolders(),
+        ]);
+
+        output.objectives = objectives.filter((o) => o.folderId === params.id).map((o) => ({
+          id: o.id,
+          name: o.name,
+          description: o.description,
+          orderIndex: o.orderIndex,
+        }));
+
+        output.notes = notes.filter((n) => n.folderId === params.id).map((n) => ({
+          id: n.id,
+          name: n.name,
+          orderIndex: n.orderIndex,
+        }));
+
+        output.childFolders = folders.filter((f) => f.parentId === params.id).map((f) => ({
+          id: f.id,
+          name: f.name,
+          orderIndex: f.orderIndex,
+        }));
+      }
+
+      return {
+        content: [{ type: "text", text: JSON.stringify(output, null, 2) }],
+        structuredContent: output,
+      };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      return {
+        content: [{ type: "text", text: `Error: ${message}` }],
+      };
+    }
+  }
+);
+
+server.registerTool(
+  "layer_create_folder",
+  {
+    title: "Create Folder",
+    description: `Create a new folder.
+
+Args:
+  - name (string): The folder name
+  - parent_id (string, optional): Parent folder ID for nesting
+
+Returns:
+  The newly created folder with its generated ID`,
+    inputSchema: z.object({
+      name: z.string().min(1, "Name is required").describe("The folder name"),
+      parent_id: z.string().nullable().optional().describe("Parent folder ID for nesting"),
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      destructiveHint: false,
+      idempotentHint: false,
+      openWorldHint: false,
+    },
+  },
+  async (params) => {
+    try {
+      const folder = await createNewFolder(params.name, params.parent_id || null);
+      return {
+        content: [{ type: "text", text: JSON.stringify(folder, null, 2) }],
+        structuredContent: folder,
+      };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      return {
+        content: [{ type: "text", text: `Error: ${message}` }],
+      };
+    }
+  }
+);
+
+server.registerTool(
+  "layer_update_folder",
+  {
+    title: "Update Folder",
+    description: `Update a folder's name.
+
+Args:
+  - id (string): The folder UUID
+  - name (string, optional): New name
+
+Returns:
+  The updated folder`,
+    inputSchema: z.object({
+      id: z.string().min(1, "Folder ID is required"),
+      name: z.string().optional().describe("New name"),
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: false,
+    },
+  },
+  async (params) => {
+    try {
+      const folder = await getFolderById(params.id);
+      if (!folder) {
+        return { content: [{ type: "text", text: `Error: Folder not found` }] };
+      }
+
+      if (params.name !== undefined) folder.name = params.name;
+
+      await saveFolder(folder);
+      return {
+        content: [{ type: "text", text: JSON.stringify(folder, null, 2) }],
+        structuredContent: folder,
+      };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      return { content: [{ type: "text", text: `Error: ${message}` }] };
+    }
+  }
+);
+
+server.registerTool(
+  "layer_delete_folder",
+  {
+    title: "Delete Folder",
+    description: `Delete a folder. Contents (objectives/notes) become unfiled. Child folders move to root.
+
+Args:
+  - id (string): The folder UUID to delete
+
+Returns:
+  Confirmation of deletion`,
+    inputSchema: z.object({
+      id: z.string().min(1, "Folder ID is required"),
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      destructiveHint: true,
+      idempotentHint: true,
+      openWorldHint: false,
+    },
+  },
+  async (params) => {
+    try {
+      const folder = await getFolderById(params.id);
+      if (!folder) {
+        return { content: [{ type: "text", text: `Error: Folder not found` }] };
+      }
+
+      await deleteFolderById(params.id);
+      return {
+        content: [{ type: "text", text: JSON.stringify({ deleted: true, id: params.id }, null, 2) }],
+        structuredContent: { deleted: true, id: params.id },
+      };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      return { content: [{ type: "text", text: `Error: ${message}` }] };
+    }
+  }
+);
+
+// ========================================
+// Hierarchy/Arrangement Tools
+// ========================================
+
+server.registerTool(
+  "layer_move_item",
+  {
+    title: "Move Item",
+    description: `Move any item (objective/note/folder) to a new folder and/or reorder.
+
+Args:
+  - item_type (string): Type of item: "objective", "note", or "folder"
+  - item_id (string): The item's UUID
+  - target_folder_id (string, optional): Target folder ID. Use null for root/unfiled.
+  - order_index (number, optional): Position within the folder
+
+Returns:
+  The updated item`,
+    inputSchema: z.object({
+      item_type: z.enum(["objective", "note", "folder"]).describe("Type of item to move"),
+      item_id: z.string().min(1, "Item ID is required"),
+      target_folder_id: z.string().nullable().optional().describe("Target folder ID, null for root/unfiled"),
+      order_index: z.number().optional().describe("Position within the folder"),
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: false,
+    },
+  },
+  async (params) => {
+    try {
+      const client = getClient();
+      const targetFolderId = params.target_folder_id === undefined ? undefined : params.target_folder_id;
+
+      if (params.item_type === "objective") {
+        const objective = await getObjectiveById(params.item_id);
+        if (!objective) {
+          return { content: [{ type: "text", text: `Error: Objective not found` }] };
+        }
+
+        if (targetFolderId !== undefined) objective.folderId = targetFolderId;
+        if (params.order_index !== undefined) objective.orderIndex = params.order_index;
+
+        await saveObjective(objective);
+        return {
+          content: [{ type: "text", text: JSON.stringify(objective, null, 2) }],
+          structuredContent: objective,
+        };
+
+      } else if (params.item_type === "note") {
+        const note = await getNoteById(params.item_id);
+        if (!note) {
+          return { content: [{ type: "text", text: `Error: Note not found` }] };
+        }
+
+        if (targetFolderId !== undefined) note.folderId = targetFolderId;
+        if (params.order_index !== undefined) note.orderIndex = params.order_index;
+
+        await saveNote(note);
+        return {
+          content: [{ type: "text", text: JSON.stringify(note, null, 2) }],
+          structuredContent: note,
+        };
+
+      } else if (params.item_type === "folder") {
+        const folder = await getFolderById(params.item_id);
+        if (!folder) {
+          return { content: [{ type: "text", text: `Error: Folder not found` }] };
+        }
+
+        // Prevent moving folder into itself or its descendants
+        if (targetFolderId === params.item_id) {
+          return { content: [{ type: "text", text: `Error: Cannot move folder into itself` }] };
+        }
+
+        if (targetFolderId !== undefined) folder.parentId = targetFolderId;
+        if (params.order_index !== undefined) folder.orderIndex = params.order_index;
+
+        await saveFolder(folder);
+        return {
+          content: [{ type: "text", text: JSON.stringify(folder, null, 2) }],
+          structuredContent: folder,
+        };
+      }
+
+      return { content: [{ type: "text", text: `Error: Invalid item type` }] };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      return { content: [{ type: "text", text: `Error: ${message}` }] };
+    }
+  }
+);
+
+server.registerTool(
+  "layer_get_hierarchy",
+  {
+    title: "Get Hierarchy",
+    description: `Get complete tree structure of all items in one call.
+
+Args:
+  - include_note_content (boolean): Include note content (default: false)
+  - include_objective_steps (boolean): Include objective steps (default: false)
+
+Returns:
+  Nested structure with root items and folder contents`,
+    inputSchema: z.object({
+      include_note_content: z.boolean().default(false).describe("Include note content"),
+      include_objective_steps: z.boolean().default(false).describe("Include objective steps"),
+    }).strict(),
+    annotations: {
+      readOnlyHint: true,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: false,
+    },
+  },
+  async (params) => {
+    try {
+      const [objectives, notes, folders] = await Promise.all([
+        loadAllObjectives(),
+        loadAllNotes(),
+        loadAllFolders(),
+      ]);
+
+      // Build folder tree
+      const folderMap = new Map<string, Record<string, unknown>>();
+
+      // Initialize all folders
+      for (const folder of folders) {
+        folderMap.set(folder.id, {
+          id: folder.id,
+          type: "folder",
+          name: folder.name,
+          parentId: folder.parentId,
+          orderIndex: folder.orderIndex,
+          children: [],
+        });
+      }
+
+      // Helper to format objective
+      const formatObjective = (o: Objective) => {
+        const obj: Record<string, unknown> = {
+          id: o.id,
+          type: "objective",
+          name: o.name,
+          description: o.description,
+          folderId: o.folderId,
+          orderIndex: o.orderIndex,
+          priorityCount: o.priorities.length,
+          stepCount: o.steps.length,
+          nextStep: o.nextStep?.text || null,
+        };
+        if (params.include_objective_steps) {
+          obj.steps = o.steps;
+          obj.priorities = o.priorities;
+        }
+        return obj;
+      };
+
+      // Helper to format note
+      const formatNote = (n: Note) => {
+        const note: Record<string, unknown> = {
+          id: n.id,
+          type: "note",
+          name: n.name,
+          folderId: n.folderId,
+          orderIndex: n.orderIndex,
+        };
+        if (params.include_note_content) {
+          note.content = n.content;
+        }
+        return note;
+      };
+
+      // Root items (no folder)
+      const rootItems: Record<string, unknown>[] = [];
+
+      // Add objectives to folders or root
+      for (const obj of objectives) {
+        const formatted = formatObjective(obj);
+        if (obj.folderId && folderMap.has(obj.folderId)) {
+          (folderMap.get(obj.folderId)!.children as Record<string, unknown>[]).push(formatted);
+        } else {
+          rootItems.push(formatted);
+        }
+      }
+
+      // Add notes to folders or root
+      for (const note of notes) {
+        const formatted = formatNote(note);
+        if (note.folderId && folderMap.has(note.folderId)) {
+          (folderMap.get(note.folderId)!.children as Record<string, unknown>[]).push(formatted);
+        } else {
+          rootItems.push(formatted);
+        }
+      }
+
+      // Build folder hierarchy - nest child folders
+      const rootFolders: Record<string, unknown>[] = [];
+      for (const folder of folders) {
+        const folderNode = folderMap.get(folder.id)!;
+        if (folder.parentId && folderMap.has(folder.parentId)) {
+          (folderMap.get(folder.parentId)!.children as Record<string, unknown>[]).push(folderNode);
+        } else {
+          rootFolders.push(folderNode);
+        }
+      }
+
+      // Sort items by orderIndex
+      const sortByOrder = (a: Record<string, unknown>, b: Record<string, unknown>) =>
+        ((a.orderIndex as number) || 0) - ((b.orderIndex as number) || 0);
+
+      rootItems.sort(sortByOrder);
+      rootFolders.sort(sortByOrder);
+
+      // Sort children within each folder
+      for (const folder of folderMap.values()) {
+        (folder.children as Record<string, unknown>[]).sort(sortByOrder);
+      }
+
+      const output = {
+        rootItems,
+        rootFolders,
+        stats: {
+          totalObjectives: objectives.length,
+          totalNotes: notes.length,
+          totalFolders: folders.length,
+        },
+      };
+
+      return {
+        content: [{ type: "text", text: JSON.stringify(output, null, 2) }],
+        structuredContent: output,
+      };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      return {
+        content: [{ type: "text", text: `Error: ${message}` }],
+      };
+    }
+  }
+);
+
+server.registerTool(
+  "layer_reorder_items",
+  {
+    title: "Reorder Items",
+    description: `Batch reorder items within a folder.
+
+Args:
+  - folder_id (string, optional): Folder ID, or null for root/unfiled items
+  - item_order (array): Array of {item_type, item_id, order_index}
+
+Returns:
+  Confirmation with updated items`,
+    inputSchema: z.object({
+      folder_id: z.string().nullable().optional().describe("Folder ID, null for root/unfiled"),
+      item_order: z.array(z.object({
+        item_type: z.enum(["objective", "note", "folder"]),
+        item_id: z.string(),
+        order_index: z.number(),
+      })).describe("Array of items with new order indices"),
+    }).strict(),
+    annotations: {
+      readOnlyHint: false,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: false,
+    },
+  },
+  async (params) => {
+    try {
+      const results: { item_type: string; item_id: string; order_index: number; success: boolean }[] = [];
+
+      for (const item of params.item_order) {
+        try {
+          if (item.item_type === "objective") {
+            const objective = await getObjectiveById(item.item_id);
+            if (objective) {
+              objective.orderIndex = item.order_index;
+              await saveObjective(objective);
+              results.push({ ...item, success: true });
+            } else {
+              results.push({ ...item, success: false });
+            }
+          } else if (item.item_type === "note") {
+            const note = await getNoteById(item.item_id);
+            if (note) {
+              note.orderIndex = item.order_index;
+              await saveNote(note);
+              results.push({ ...item, success: true });
+            } else {
+              results.push({ ...item, success: false });
+            }
+          } else if (item.item_type === "folder") {
+            const folder = await getFolderById(item.item_id);
+            if (folder) {
+              folder.orderIndex = item.order_index;
+              await saveFolder(folder);
+              results.push({ ...item, success: true });
+            } else {
+              results.push({ ...item, success: false });
+            }
+          }
+        } catch {
+          results.push({ ...item, success: false });
+        }
+      }
+
+      const output = {
+        reordered: results.filter((r) => r.success).length,
+        failed: results.filter((r) => !r.success).length,
+        results,
+      };
+
+      return {
+        content: [{ type: "text", text: JSON.stringify(output, null, 2) }],
+        structuredContent: output,
+      };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      return { content: [{ type: "text", text: `Error: ${message}` }] };
+    }
+  }
+);
+
 // Run server
 async function main() {
   const transport = new StdioServerTransport();
   await server.connect(transport);
-  console.error("Objectiv MCP server running via stdio");
+  console.error("Layer MCP server running via stdio");
 }
 
 main().catch((error) => {

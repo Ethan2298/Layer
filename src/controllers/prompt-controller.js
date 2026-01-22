@@ -37,8 +37,8 @@ export function setCallbacks({ saveData, updateView, renderSideList, renderConte
  */
 export async function startAddObjective() {
   const data = AppState.getData();
-  const Repository = window.Objectiv?.Repository;
-  const SideListState = window.Objectiv?.SideListState;
+  const Repository = window.Layer?.Repository;
+  const SideListState = window.Layer?.SideListState;
 
   // Calculate orderIndex to place at top (min - 1)
   const minOrder = data.objectives.reduce((min, o) => Math.min(min, o.orderIndex || 0), 0);

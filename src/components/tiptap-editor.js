@@ -345,7 +345,7 @@ async function saveContent() {
     const markdown = htmlToMarkdown(html);
 
     // Save via FolderExplorer
-    const FolderExplorer = window.Objectiv?.FolderExplorer;
+    const FolderExplorer = window.Layer?.FolderExplorer;
     if (FolderExplorer && FolderExplorer.writeFile) {
       await FolderExplorer.writeFile(currentFilePath, markdown);
       hasUnsavedChanges = false;
@@ -413,7 +413,7 @@ function markdownToHtml(markdown) {
   if (!markdown) return '<p></p>';
 
   // Use existing parser if available
-  const Markdown = window.Objectiv?.Markdown;
+  const Markdown = window.Layer?.Markdown;
   if (Markdown && Markdown.parseMarkdown) {
     // The existing parser adds wrapper classes, strip them for Tiptap
     let html = Markdown.parseMarkdown(markdown);
@@ -559,7 +559,7 @@ function createNoteToolbarHTML() {
 }
 
 /**
- * Create note editor container HTML - minimal Notion-style (no toolbar)
+ * Create note editor container HTML - minimal Notion-style (toolbar is in global nav area)
  */
 function createNoteEditorHTML() {
   return `
@@ -619,6 +619,11 @@ export async function initNoteEditor(content, noteId, container, onAutoSave) {
       noteAutoSaveTimeout = setTimeout(() => {
         triggerNoteAutoSave();
       }, NOTE_AUTOSAVE_DELAY);
+      // Update global toolbar active states
+      updateGlobalNoteToolbarState();
+    },
+    onSelectionUpdate: () => {
+      updateGlobalNoteToolbarState();
     },
     onBlur: () => {
       // Save immediately on blur
@@ -712,12 +717,49 @@ function updateNoteToolbarState() {
   }
 }
 
+/**
+ * Update the global note toolbar (in nav area) active states
+ */
+export function updateGlobalNoteToolbarState() {
+  if (!noteEditorInstance) return;
+
+  const toolbar = document.getElementById('note-toolbar-row');
+  if (!toolbar) return;
+
+  for (const group of toolbarButtons) {
+    for (const btn of group.items) {
+      const btnEl = toolbar.querySelector(`[data-command="${btn.id}"]`);
+      if (btnEl && btn.isActive) {
+        btnEl.classList.toggle('is-active', btn.isActive(noteEditorInstance));
+      }
+    }
+  }
+}
+
+/**
+ * Execute a toolbar command on the note editor
+ */
+export function executeNoteCommand(commandId) {
+  if (!noteEditorInstance) return;
+
+  // Find and execute formatting command
+  for (const group of toolbarButtons) {
+    const btn = group.items.find(b => b.id === commandId);
+    if (btn) {
+      btn.command(noteEditorInstance);
+      updateGlobalNoteToolbarState();
+      return;
+    }
+  }
+}
+
 // ========================================
 // Exports
 // ========================================
 
 // Note: initEditor, destroyEditor, isEditorActive, hasChanges, setOnSave,
-// initNoteEditor, destroyNoteEditor are already exported at their declarations
+// initNoteEditor, destroyNoteEditor, updateGlobalNoteToolbarState, executeNoteCommand
+// are already exported at their declarations
 export {
   loadTiptap,
   saveContent,
@@ -739,4 +781,6 @@ export default {
   markdownToHtml,
   initNoteEditor,
   destroyNoteEditor,
+  updateGlobalNoteToolbarState,
+  executeNoteCommand,
 };

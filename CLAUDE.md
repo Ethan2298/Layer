@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Objectiv.go is a web-based goal/objective tracking application. It has two modes:
+Layer is a web-based goal/objective tracking application. It has two modes:
 - **Web App**: Static web application served via `npx serve`
 - **Terminal TUI**: blessed-based terminal interface (separate app)
 
@@ -35,7 +35,7 @@ No test or lint commands are currently configured.
 
 All frontend code uses ES modules. Entry point `src/app.js` wires everything together.
 
-**Note:** `window.Objectiv` exposes modules globally for use by inline scripts in `index.html`. This is a migration artifact - future work should move inline scripts to ES modules.
+**Note:** `window.Layer` exposes modules globally for use by inline scripts in `index.html`. This is a migration artifact - future work should move inline scripts to ES modules.
 
 - **Data Layer** (`data/`)
   - `repository.js` - CRUD operations with in-memory cache, factory functions (`createObjective`, `createPriority`, `createStep`)

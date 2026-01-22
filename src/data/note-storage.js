@@ -10,6 +10,19 @@ import { SUPABASE_URL, SUPABASE_ANON_KEY } from '../config.js';
 
 let supabase = null;
 
+// Track recently saved note IDs to ignore our own realtime updates
+const recentlySavedNoteIds = new Set();
+const RECENT_SAVE_EXPIRY_MS = 2000; // Ignore realtime updates for 2 seconds after local save
+
+/**
+ * Check if a note was recently saved locally (to ignore our own realtime updates)
+ * @param {string} noteId - Note ID to check
+ * @returns {boolean} True if this note was saved locally recently
+ */
+export function wasRecentlySavedLocally(noteId) {
+  return recentlySavedNoteIds.has(noteId);
+}
+
 /**
  * Initialize the Supabase client
  */
@@ -109,6 +122,10 @@ export async function saveNote(note) {
 
     console.log('Updated note:', data.id);
 
+    // Track this save to ignore our own realtime updates
+    recentlySavedNoteIds.add(data.id);
+    setTimeout(() => recentlySavedNoteIds.delete(data.id), RECENT_SAVE_EXPIRY_MS);
+
     return {
       id: data.id,
       name: data.name,
@@ -132,6 +149,10 @@ export async function saveNote(note) {
     }
 
     console.log('Created note:', data.id);
+
+    // Track this save to ignore our own realtime updates
+    recentlySavedNoteIds.add(data.id);
+    setTimeout(() => recentlySavedNoteIds.delete(data.id), RECENT_SAVE_EXPIRY_MS);
 
     return {
       id: data.id,
@@ -240,5 +261,6 @@ export default {
   saveNote,
   deleteNote,
   updateNoteOrder,
-  subscribeToNoteChanges
+  subscribeToNoteChanges,
+  wasRecentlySavedLocally
 };

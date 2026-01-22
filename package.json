@@ -1,7 +1,7 @@
 {
-  "name": "Objectiv",
+  "name": "Layer",
   "version": "2.0.0",
-  "description": "Objectiv - A tool for transmuting dreams into reality.",
+  "description": "Layer - A tool for transmuting dreams into reality.",
   "main": "main.js",
   "scripts": {
     "start": "electron .",

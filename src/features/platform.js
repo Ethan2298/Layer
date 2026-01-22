@@ -22,7 +22,7 @@ export const isBrowser = !isElectron;
  * Apply saved theme on page load
  */
 export function applyStoredTheme() {
-  const stored = localStorage.getItem('objectiv-theme');
+  const stored = localStorage.getItem('layer-theme');
   // Remove both mode classes first
   document.body.classList.remove('light-mode', 'solarized-mode');
 
@@ -58,7 +58,7 @@ export function setTheme(theme) {
     document.body.classList.add('solarized-mode');
   }
   // 'dark' is the default (no class needed)
-  localStorage.setItem('objectiv-theme', theme);
+  localStorage.setItem('layer-theme', theme);
 }
 
 // ========================================
@@ -83,9 +83,9 @@ export function initSettingsButton() {
  * Open settings tab (or switch to existing settings tab)
  */
 export function openSettingsTab() {
-  const TabState = window.Objectiv?.TabState;
-  const SideListState = window.Objectiv?.SideListState;
-  const Router = window.Objectiv?.Router;
+  const TabState = window.Layer?.TabState;
+  const SideListState = window.Layer?.SideListState;
+  const Router = window.Layer?.Router;
 
   if (!TabState) return;
 
@@ -108,7 +108,7 @@ export function openSettingsTab() {
       }
 
       // Trigger view update
-      const updateView = window.Objectiv?.updateView;
+      const updateView = window.Layer?.updateView;
       if (updateView) updateView();
       return;
     }
@@ -144,7 +144,7 @@ export function updateStatusReporter() {
   const systemStatus = AppState.getSystemStatus();
 
   // Get Supabase storage status
-  const storageStatus = window.Objectiv?.Repository?.getStorageStatus?.() || { isReady: false };
+  const storageStatus = window.Layer?.Repository?.getStorageStatus?.() || { isReady: false };
   const storageLabel = storageStatus.isReady ? 'connected' : 'not configured';
   const storageSt = storageStatus.isReady ? 'ok' : 'warn';
 

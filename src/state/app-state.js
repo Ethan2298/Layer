@@ -9,6 +9,7 @@
  */
 
 import * as TabState from './tab-state.js';
+import * as TreeUtils from '../data/tree-utils.js';
 
 // ========================================
 // Application State
@@ -17,6 +18,7 @@ import * as TabState from './tab-state.js';
 const state = {
   // Data
   data: { objectives: [], folders: [], notes: [] },
+  tree: [],
 
   // Mobile state
   isMobile: false,
@@ -73,6 +75,10 @@ export function getFolders() {
 
 export function getNotes() {
   return state.data.notes;
+}
+
+export function getTree() {
+  return state.tree;
 }
 
 /**
@@ -206,6 +212,32 @@ export function setFolders(folders) {
 
 export function setNotes(notes) {
   state.data.notes = notes;
+}
+
+/**
+ * Set the tree and sync to flat arrays
+ */
+export function setTree(tree) {
+  state.tree = tree;
+  // Sync flat arrays for backward compatibility
+  const flat = TreeUtils.treeToFlat(tree);
+  state.data.objectives = flat.objectives;
+  state.data.folders = flat.folders;
+  state.data.notes = flat.notes;
+}
+
+/**
+ * Build tree from flat data
+ * @param {Array} bookmarks - Optional bookmarks array (from localStorage)
+ */
+export function rebuildTree(bookmarks = []) {
+  state.tree = TreeUtils.flatToTree(
+    state.data.objectives,
+    state.data.folders,
+    state.data.notes,
+    bookmarks
+  );
+  return state.tree;
 }
 
 /**
@@ -353,6 +385,7 @@ export default {
   getObjectives,
   getFolders,
   getNotes,
+  getTree,
   getSelectedObjectiveIndex,
   getSelectedObjective,
   getViewMode,
@@ -379,6 +412,8 @@ export default {
   setObjectives,
   setFolders,
   setNotes,
+  setTree,
+  rebuildTree,
   setSelectedObjectiveIndex,
   setViewMode,
   setIsMobile,

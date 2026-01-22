@@ -12,6 +12,8 @@ import { formatTimestamp, formatDuration } from '../utils.js';
 import { renderContentNextStep } from './next-step-timer.js';
 import GlobalNav from './global-nav.js';
 import { setupInlineEdit } from '../utils/inline-edit.js';
+import { executeNoteCommand } from './tiptap-editor.js';
+import { renderDirectoryListing } from './directory-listing.js';
 
 // ========================================
 // Callbacks (set by app.js)
@@ -21,6 +23,25 @@ let _startAddPriority = () => {};
 let _startLogStep = () => {};
 let _refreshClarity = () => {};
 let _renderSideList = () => {};
+
+// ========================================
+// Header Edit Cleanup
+// ========================================
+// Track cleanup functions for header inline edits to prevent
+// stale handlers from firing when switching between views
+let _headerTitleCleanup = null;
+let _headerDescCleanup = null;
+
+function cleanupHeaderEdits() {
+  if (_headerTitleCleanup) {
+    _headerTitleCleanup();
+    _headerTitleCleanup = null;
+  }
+  if (_headerDescCleanup) {
+    _headerDescCleanup();
+    _headerDescCleanup = null;
+  }
+}
 
 export function setCallbacks({ startAddPriority, startLogStep, refreshClarity, renderSideList }) {
   if (startAddPriority) _startAddPriority = startAddPriority;
@@ -140,7 +161,8 @@ export function renderContentView(options = {}) {
   // For other views, always re-render (they update based on selection)
   const shouldReRender = viewMode !== 'web' || existingMode !== viewMode;
 
-  // Handle web-mode CSS class and header (needed even when not re-rendering)
+  // Handle web-mode and note-mode CSS classes (needed even when not re-rendering)
+  const contentView = document.getElementById('content-view');
   const contentPage = document.getElementById('content-page');
   const app = document.getElementById('app');
   const headerTitle = document.getElementById('content-header-title');
@@ -149,12 +171,18 @@ export function renderContentView(options = {}) {
   if (viewMode === 'web') {
     contentPage?.classList.add('web-mode');
     app?.classList.add('web-mode');
+    contentView?.classList.remove('note-mode');
     // Update header for web view (even if not re-rendering)
     if (headerTitle) headerTitle.textContent = 'Web';
     if (headerDesc) headerDesc.textContent = '';
+  } else if (viewMode === 'note') {
+    contentPage?.classList.remove('web-mode');
+    app?.classList.remove('web-mode');
+    contentView?.classList.add('note-mode');
   } else {
     contentPage?.classList.remove('web-mode');
     app?.classList.remove('web-mode');
+    contentView?.classList.remove('note-mode');
   }
 
   if (shouldReRender) {
@@ -194,6 +222,9 @@ function renderHomeViewInContainer(container) {
 
   if (!headerTitle) return;
 
+  // Cleanup any previous header edit handlers
+  cleanupHeaderEdits();
+
   // Remove web-mode if present
   if (contentPage) contentPage.classList.remove('web-mode');
   if (app) app.classList.remove('web-mode');
@@ -201,28 +232,23 @@ function renderHomeViewInContainer(container) {
   headerTitle.textContent = 'Home';
   headerTitle.setAttribute('contenteditable', 'false');
   if (headerDesc) {
-    headerDesc.textContent = 'Welcome to Objectiv';
+    headerDesc.textContent = '';
     headerDesc.setAttribute('contenteditable', 'false');
   }
 
-  const data = AppState.getData();
-  const objectiveCount = data.objectives.length;
-  const folderCount = data.folders.length;
+  container.innerHTML = '';
 
-  container.innerHTML = `
-    <div class="home-view">
-      <div class="home-stats">
-        <div class="home-stat">
-          <span class="home-stat-value">${objectiveCount}</span>
-          <span class="home-stat-label">Objective${objectiveCount !== 1 ? 's' : ''}</span>
-        </div>
-        <div class="home-stat">
-          <span class="home-stat-value">${folderCount}</span>
-          <span class="home-stat-label">Folder${folderCount !== 1 ? 's' : ''}</span>
-        </div>
-      </div>
-    </div>
-  `;
+  // Create wrapper div
+  const homeView = document.createElement('div');
+  homeView.className = 'home-view';
+  container.appendChild(homeView);
+
+  // Render directory listing for root level
+  renderDirectoryListing(homeView, {
+    folderId: null, // Root level
+    onItemClick: handleDirectoryItemClick,
+    onFolderToggle: () => {} // Toggle handled internally
+  });
 }
 
 /**
@@ -246,6 +272,9 @@ function renderWebViewInContainer(container) {
   const app = document.getElementById('app');
 
   if (!headerTitle) return;
+
+  // Cleanup any previous header edit handlers
+  cleanupHeaderEdits();
 
   // Apply web-mode for full-screen browser
   if (contentPage) {
@@ -275,11 +304,11 @@ function renderWebViewInContainer(container) {
   `;
 
   const webview = container.querySelector('.web-browser-frame');
-  const GlobalNav = window.Objectiv?.GlobalNav;
+  const GlobalNav = window.Layer?.GlobalNav;
 
   // Helper to update the OWNER tab from webview state (not the active tab)
   const updateOwnerTab = () => {
-    const Tabs = window.Objectiv?.Tabs;
+    const Tabs = window.Layer?.Tabs;
     if (!Tabs) return;
 
     // Update title for the tab that owns this webview
@@ -315,7 +344,7 @@ function renderWebViewInContainer(container) {
 
   // Update tab title when page title changes
   webview.addEventListener('page-title-updated', (e) => {
-    const Tabs = window.Objectiv?.Tabs;
+    const Tabs = window.Layer?.Tabs;
     const title = e.title;
     if (title) {
       if (Tabs) {
@@ -331,7 +360,7 @@ function renderWebViewInContainer(container) {
 
   // Update tab icon and nav icon when favicon changes
   webview.addEventListener('page-favicon-updated', (e) => {
-    const Tabs = window.Objectiv?.Tabs;
+    const Tabs = window.Layer?.Tabs;
     const favicons = e.favicons || [];
     if (favicons.length > 0) {
       if (Tabs) {
@@ -358,7 +387,7 @@ function renderWebViewInContainer(container) {
 
   // Show audio indicator when media starts playing
   webview.addEventListener('media-started-playing', () => {
-    const Tabs = window.Objectiv?.Tabs;
+    const Tabs = window.Layer?.Tabs;
     if (Tabs) {
       Tabs.showAudioIndicator(ownerTabId);
     }
@@ -366,7 +395,7 @@ function renderWebViewInContainer(container) {
 
   // Hide audio indicator when media pauses/stops
   webview.addEventListener('media-paused', () => {
-    const Tabs = window.Objectiv?.Tabs;
+    const Tabs = window.Layer?.Tabs;
     if (Tabs) {
       Tabs.hideAudioIndicator(ownerTabId);
     }
@@ -397,6 +426,9 @@ function renderObjectiveViewInContainer(container) {
   const app = document.getElementById('app');
 
   if (!headerTitle) return;
+
+  // Cleanup any previous header edit handlers (must happen before any return)
+  cleanupHeaderEdits();
 
   // Remove web-mode if present
   if (contentPage) contentPage.classList.remove('web-mode');
@@ -436,14 +468,14 @@ function renderObjectiveViewInContainer(container) {
     headerDesc.dataset.placeholder = 'Add a description...';
   }
 
-  // Setup inline editing on header title
-  setupInlineEdit(headerTitle, {
+  // Setup inline editing on header title (cleanup already happened above)
+  _headerTitleCleanup = setupInlineEdit(headerTitle, {
     onSave: (newValue) => {
       obj.name = newValue;
-      const Repository = window.Objectiv?.Repository;
+      const Repository = window.Layer?.Repository;
       Repository?.saveObjective?.(obj);
       // Update sidebar
-      const SideListState = window.Objectiv?.SideListState;
+      const SideListState = window.Layer?.SideListState;
       if (SideListState) {
         _renderSideList();
       }
@@ -453,12 +485,12 @@ function renderObjectiveViewInContainer(container) {
 
   // Setup inline editing on description
   if (headerDesc) {
-    setupInlineEdit(headerDesc, {
+    _headerDescCleanup = setupInlineEdit(headerDesc, {
       placeholder: 'Add a description...',
       allowEmpty: true,
       onSave: (newValue) => {
         obj.description = newValue;
-        const Repository = window.Objectiv?.Repository;
+        const Repository = window.Layer?.Repository;
         Repository?.saveObjective?.(obj);
       }
     });
@@ -486,11 +518,102 @@ export function renderObjectiveView() {
 }
 
 /**
+ * Handle click on a directory item - navigate to the item
+ */
+function handleDirectoryItemClick(item) {
+  const SideListState = window.Layer?.SideListState;
+  const data = AppState.getData();
+
+  switch (item.type) {
+    case 'objective': {
+      const objIndex = data.objectives.findIndex(o => o.id === item.id);
+      if (objIndex >= 0) {
+        AppState.setSelectedObjectiveIndex(objIndex);
+        AppState.setViewMode('objective');
+
+        // Update side list selection
+        if (SideListState) {
+          SideListState.selectItem(SideListState.ItemType.OBJECTIVE, item.id);
+        }
+
+        renderContentView();
+
+        // Handle mobile view
+        const Mobile = window.Layer?.Mobile;
+        if (AppState.isMobile() && Mobile?.setMobileView) {
+          Mobile.setMobileView('detail');
+        }
+      }
+      break;
+    }
+
+    case 'folder': {
+      AppState.setViewMode('folder');
+
+      // Update side list selection
+      if (SideListState) {
+        SideListState.selectItem(SideListState.ItemType.FOLDER, item.id);
+      }
+
+      renderContentView();
+
+      // Handle mobile view
+      const Mobile = window.Layer?.Mobile;
+      if (AppState.isMobile() && Mobile?.setMobileView) {
+        Mobile.setMobileView('detail');
+      }
+      break;
+    }
+
+    case 'note': {
+      AppState.setViewMode('note');
+
+      // Update side list selection
+      if (SideListState) {
+        SideListState.selectItem(SideListState.ItemType.NOTE, item.id);
+      }
+
+      renderContentView();
+
+      // Handle mobile view
+      const Mobile = window.Layer?.Mobile;
+      if (AppState.isMobile() && Mobile?.setMobileView) {
+        Mobile.setMobileView('detail');
+      }
+      break;
+    }
+
+    case 'bookmark': {
+      // For bookmarks, open in web view
+      AppState.setViewMode('web');
+
+      // Update side list selection
+      if (SideListState) {
+        SideListState.selectItem(SideListState.ItemType.BOOKMARK, item.id);
+      }
+
+      renderContentView();
+
+      // Load the URL after a brief delay
+      setTimeout(() => {
+        const activeTabId = TabState.getActiveTabId();
+        const TabContentManager = window.Layer?.TabContentManager;
+        const webview = TabContentManager?.getWebview(activeTabId);
+        if (webview && item.url) {
+          webview.src = item.url;
+        }
+      }, 50);
+      break;
+    }
+  }
+}
+
+/**
  * Render folder view into a container
  * @param {HTMLElement} container - The container to render into
  */
 function renderFolderViewInContainer(container) {
-  const SideListState = window.Objectiv?.SideListState;
+  const SideListState = window.Layer?.SideListState;
   const selectedItem = SideListState?.getSelectedItem();
   const folder = selectedItem?.data;
 
@@ -500,6 +623,9 @@ function renderFolderViewInContainer(container) {
   const app = document.getElementById('app');
 
   if (!headerTitle) return;
+
+  // Cleanup any previous header edit handlers (must happen before any return)
+  cleanupHeaderEdits();
 
   // Remove web-mode if present
   if (contentPage) contentPage.classList.remove('web-mode');
@@ -518,21 +644,24 @@ function renderFolderViewInContainer(container) {
 
   const data = AppState.getData();
 
-  // Get objectives in this folder
+  // Count items in this folder (objectives, notes, subfolders)
   const folderObjectives = data.objectives.filter(obj => obj.folderId === folder.id);
+  const folderNotes = (data.notes || []).filter(n => n.folderId === folder.id);
+  const subfolders = (data.folders || []).filter(f => f.parentId === folder.id);
+  const totalItems = folderObjectives.length + folderNotes.length + subfolders.length;
 
   headerTitle.textContent = folder.name || 'Unnamed Folder';
   headerTitle.setAttribute('contenteditable', 'true');
 
   if (headerDesc) {
-    headerDesc.textContent = folderObjectives.length === 1
-      ? '1 objective'
-      : `${folderObjectives.length} objectives`;
-    headerDesc.setAttribute('contenteditable', 'false'); // Folder description is auto-generated
+    headerDesc.textContent = totalItems === 1
+      ? '1 item'
+      : `${totalItems} items`;
+    headerDesc.setAttribute('contenteditable', 'false');
   }
 
-  // Setup inline editing on folder title
-  setupInlineEdit(headerTitle, {
+  // Setup inline editing on folder title (cleanup already happened above)
+  _headerTitleCleanup = setupInlineEdit(headerTitle, {
     onSave: async (newValue) => {
       folder.name = newValue;
       // Update in data.folders
@@ -541,7 +670,7 @@ function renderFolderViewInContainer(container) {
         folderInData.name = newValue;
       }
       // Save to database
-      const Repository = window.Objectiv?.Repository;
+      const Repository = window.Layer?.Repository;
       if (Repository?.updateFolder) {
         try {
           await Repository.updateFolder({ id: folder.id, name: newValue });
@@ -556,59 +685,17 @@ function renderFolderViewInContainer(container) {
 
   container.innerHTML = '';
 
-  // Render objectives list
-  if (folderObjectives.length === 0) {
-    const emptyState = document.createElement('div');
-    emptyState.className = 'folder-empty-state';
-    emptyState.style.cssText = 'color: var(--text-secondary); padding: 2rem 0; text-align: center;';
-    emptyState.textContent = 'No objectives in this folder';
-    container.appendChild(emptyState);
-  } else {
-    const header = document.createElement('div');
-    header.className = 'section-header';
-    header.textContent = 'OBJECTIVES';
-    container.appendChild(header);
+  // Create wrapper div
+  const folderView = document.createElement('div');
+  folderView.className = 'folder-view';
+  container.appendChild(folderView);
 
-    folderObjectives.forEach((obj) => {
-      const objectiveItem = document.createElement('div');
-      objectiveItem.className = 'list-item folder-objective-item';
-      objectiveItem.style.cssText = 'cursor: pointer;';
-
-      const nameSpan = document.createElement('span');
-      nameSpan.className = 'list-item-content';
-      nameSpan.textContent = obj.name;
-      objectiveItem.appendChild(nameSpan);
-
-      // Click to navigate to the objective
-      objectiveItem.onclick = () => {
-        const objIndex = data.objectives.indexOf(obj);
-        if (objIndex >= 0) {
-          AppState.setSelectedObjectiveIndex(objIndex);
-          AppState.setViewMode('objective');
-
-          // Update side list selection
-          const flatList = SideListState.getFlatList?.() || SideListState.getItems();
-          const sideListIndex = flatList.findIndex(item =>
-            item.type === SideListState.ItemType.OBJECTIVE && item.objectiveId === obj.id
-          );
-          if (sideListIndex >= 0) {
-            SideListState.setSelectedIndex(sideListIndex);
-          }
-
-          // This would trigger re-render via navigation controller
-          renderContentView();
-
-          // Handle mobile view
-          const Mobile = window.Objectiv?.Mobile;
-          if (AppState.isMobile() && Mobile?.setMobileView) {
-            Mobile.setMobileView('detail');
-          }
-        }
-      };
-
-      container.appendChild(objectiveItem);
-    });
-  }
+  // Render directory listing for this folder's contents
+  renderDirectoryListing(folderView, {
+    folderId: folder.id,
+    onItemClick: handleDirectoryItemClick,
+    onFolderToggle: () => {} // Toggle handled internally
+  });
 }
 
 /**
@@ -626,7 +713,7 @@ export function renderFolderView() {
  * @param {HTMLElement} container - The container to render into
  */
 async function renderNoteViewInContainer(container) {
-  const SideListState = window.Objectiv?.SideListState;
+  const SideListState = window.Layer?.SideListState;
   const selectedItem = SideListState?.getSelectedItem();
   const note = selectedItem?.data;
 
@@ -636,6 +723,9 @@ async function renderNoteViewInContainer(container) {
   const app = document.getElementById('app');
 
   if (!headerTitle) return;
+
+  // Cleanup any previous header edit handlers (must happen before any return)
+  cleanupHeaderEdits();
 
   // Remove web-mode if present
   if (contentPage) contentPage.classList.remove('web-mode');
@@ -661,11 +751,11 @@ async function renderNoteViewInContainer(container) {
     headerDesc.setAttribute('contenteditable', 'false');
   }
 
-  // Setup inline editing on title
-  setupInlineEdit(headerTitle, {
+  // Setup inline editing on title (cleanup already happened above)
+  _headerTitleCleanup = setupInlineEdit(headerTitle, {
     onSave: async (newValue) => {
       note.name = newValue;
-      const NoteStorage = window.Objectiv?.NoteStorage;
+      const NoteStorage = window.Layer?.NoteStorage;
       if (NoteStorage?.saveNote) {
         await NoteStorage.saveNote(note);
       }
@@ -682,7 +772,7 @@ async function renderNoteViewInContainer(container) {
   container.appendChild(editorContainer);
 
   // Initialize tiptap editor for note content
-  const TiptapEditor = window.Objectiv?.TiptapEditor;
+  const TiptapEditor = window.Layer?.TiptapEditor;
   if (TiptapEditor?.initNoteEditor) {
     await TiptapEditor.initNoteEditor(
       note.content || '',
@@ -692,7 +782,7 @@ async function renderNoteViewInContainer(container) {
         // Auto-save callback
         note.content = html;
         note.updatedAt = new Date().toISOString();
-        const NoteStorage = window.Objectiv?.NoteStorage;
+        const NoteStorage = window.Layer?.NoteStorage;
         if (NoteStorage?.saveNote) {
           await NoteStorage.saveNote(note);
         }
@@ -711,7 +801,7 @@ async function renderNoteViewInContainer(container) {
       textarea.addEventListener('blur', async () => {
         note.content = textarea.value;
         note.updatedAt = new Date().toISOString();
-        const NoteStorage = window.Objectiv?.NoteStorage;
+        const NoteStorage = window.Layer?.NoteStorage;
         if (NoteStorage?.saveNote) {
           await NoteStorage.saveNote(note);
         }
@@ -742,6 +832,9 @@ function renderSettingsViewInContainer(container) {
 
   if (!headerTitle) return;
 
+  // Cleanup any previous header edit handlers
+  cleanupHeaderEdits();
+
   // Remove web-mode if present
   if (contentPage) contentPage.classList.remove('web-mode');
   if (app) app.classList.remove('web-mode');
@@ -754,13 +847,13 @@ function renderSettingsViewInContainer(container) {
   }
 
   // Get current theme
-  const Platform = window.Objectiv?.Platform;
+  const Platform = window.Layer?.Platform;
   const currentTheme = Platform?.getCurrentTheme?.() || 'dark';
 
   container.innerHTML = `
     <div class="settings-view">
       <h1>Settings</h1>
-      <p class="settings-subtitle">Customize your Objectiv experience</p>
+      <p class="settings-subtitle">Customize your Layer experience</p>
 
       <div class="settings-section">
         <div class="settings-section-title">Appearance</div>
@@ -846,7 +939,7 @@ export function renderContentPriorities(container, obj) {
         onSave: (newValue) => {
           // Update priority name and save
           priority.name = newValue;
-          const Repository = window.Objectiv?.Repository;
+          const Repository = window.Layer?.Repository;
           Repository?.saveObjective?.(obj);
 
           // Clear add mode if we were adding
@@ -859,7 +952,7 @@ export function renderContentPriorities(container, obj) {
           const idx = obj.priorities.indexOf(priority);
           if (idx !== -1) {
             obj.priorities.splice(idx, 1);
-            const Repository = window.Objectiv?.Repository;
+            const Repository = window.Layer?.Repository;
             Repository?.saveObjective?.(obj);
             AppState.resetPromptState();
             _renderContentView();
@@ -949,7 +1042,7 @@ export function renderContentSteps(container, obj) {
         onSave: (newValue) => {
           // Update step name and save
           step.name = newValue;
-          const Repository = window.Objectiv?.Repository;
+          const Repository = window.Layer?.Repository;
           Repository?.saveObjective?.(obj);
 
           // Clear add mode if we were adding
@@ -962,7 +1055,7 @@ export function renderContentSteps(container, obj) {
           const idx = obj.steps.indexOf(step);
           if (idx !== -1) {
             obj.steps.splice(idx, 1);
-            const Repository = window.Objectiv?.Repository;
+            const Repository = window.Layer?.Repository;
             Repository?.saveObjective?.(obj);
             AppState.resetPromptState();
             _renderContentView();
@@ -988,7 +1081,7 @@ export function renderContentSteps(container, obj) {
  * Start hover preview (shows content without changing selection)
  */
 export function startHoverPreview(itemData) {
-  const SideListState = window.Objectiv?.SideListState;
+  const SideListState = window.Layer?.SideListState;
   const ItemType = SideListState?.ItemType || {};
 
   if (itemData.type !== ItemType.OBJECTIVE) {
@@ -1033,6 +1126,35 @@ export function endHoverPreview() {
 }
 
 // ========================================
+// Note Toolbar Setup
+// ========================================
+
+let noteToolbarInitialized = false;
+
+/**
+ * Initialize note toolbar click handlers (call once on app init)
+ */
+export function initNoteToolbar() {
+  if (noteToolbarInitialized) return;
+
+  const toolbar = document.getElementById('note-toolbar-row');
+  if (!toolbar) return;
+
+  toolbar.addEventListener('click', (e) => {
+    const btn = e.target.closest('.note-toolbar-btn');
+    if (!btn) return;
+
+    e.preventDefault();
+    const command = btn.dataset.command;
+    if (command) {
+      executeNoteCommand(command);
+    }
+  });
+
+  noteToolbarInitialized = true;
+}
+
+// ========================================
 // Default Export
 // ========================================
 
@@ -1049,5 +1171,6 @@ export default {
   startHoverPreview,
   endHoverPreview,
   createListItem,
-  createConfirmRow
+  createConfirmRow,
+  initNoteToolbar
 };

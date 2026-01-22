@@ -1,0 +1,6 @@
+{
+  "enabledPlugins": {
+    "rust-analyzer-lsp@claude-plugins-official": false,
+    "commit-commands@claude-plugins-official": false
+  }
+}

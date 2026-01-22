@@ -33,6 +33,9 @@ import {
   subscribeToNoteChanges
 } from './note-storage.js';
 
+import * as TreeUtils from './tree-utils.js';
+import * as BookmarkStorage from './bookmark-storage.js';
+
 // ========================================
 // Configuration
 // ========================================
@@ -284,6 +287,28 @@ export {
 };
 
 // ========================================
+// Tree Operations
+// ========================================
+
+/**
+ * Save tree structure to storage
+ * Updates all items with their new orderIndex and parent relationships
+ */
+export async function saveTree(tree) {
+  const { objectives, folders, notes, bookmarks } = TreeUtils.treeToFlat(tree);
+
+  // Batch update all types in parallel
+  const updatePromises = [
+    ...objectives.map(o => updateObjectiveOrder(o.id, o.orderIndex, o.folderId)),
+    ...folders.map(f => updateFolder({ id: f.id, orderIndex: f.orderIndex, parentId: f.parentId })),
+    ...notes.map(n => updateNoteOrder(n.id, n.orderIndex, n.folderId)),
+    ...bookmarks.map(b => BookmarkStorage.updateBookmarkOrder(b.id, b.orderIndex, b.folderId))
+  ];
+
+  await Promise.all(updatePromises);
+}
+
+// ========================================
 // Factory Functions
 // ========================================
 
@@ -367,6 +392,8 @@ export default {
   createPriority,
   createStep,
   createNote,
+  // Tree operations
+  saveTree,
   // Folder operations
   loadAllFolders,
   createFolder,

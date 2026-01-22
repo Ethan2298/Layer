@@ -92,6 +92,7 @@ function createWindow() {
     minWidth: 800,
     minHeight: 600,
     backgroundColor: '#000000',
+    icon: path.join(__dirname, 'icon.ico'),
     frame: isMac ? true : false,
     titleBarStyle: isMac ? 'hiddenInset' : 'hidden',
     trafficLightPosition: isMac ? { x: 12, y: 11 } : undefined,

@@ -1,11 +1,11 @@
 {
-  "name": "objectiv-mcp-server",
+  "name": "layer-mcp-server",
   "version": "1.0.0",
-  "description": "MCP server for Objectiv goal tracking",
+  "description": "MCP server for Layer goal tracking",
   "type": "module",
   "main": "dist/index.js",
   "bin": {
-    "objectiv-mcp": "./dist/index.js"
+    "layer-mcp": "./dist/index.js"
   },
   "scripts": {
     "build": "tsc",
