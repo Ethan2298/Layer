@@ -58,6 +58,7 @@ export async function renderSideList() {
     objectives: data.objectives,
     folders: data.folders || [],
     notes: data.notes || [],
+    taskLists: data.taskLists || [],
     isAddingObjective
   });
 
@@ -312,6 +313,38 @@ function createSideListItem(itemData, idx, isSelected) {
 
       setupDraggable(item, 'note', itemData.noteId, itemData.data);
       setupDropTarget(item, 'note', itemData.noteId);
+      break;
+
+    case ItemType.TASK_LIST:
+      item.className = 'side-item task-list-row' + (isSelected ? ' selected' : '');
+      item.dataset.type = 'task-list';
+      item.dataset.taskListId = itemData.taskListId;
+      item.dataset.folderId = itemData.folderId || '';
+      item.dataset.sortable = 'true';
+
+      // Task list icon (checklist icon)
+      const taskListIcon = `<svg class="task-list-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <line x1="8" y1="6" x2="21" y2="6"/>
+        <line x1="8" y1="12" x2="21" y2="12"/>
+        <line x1="8" y1="18" x2="21" y2="18"/>
+        <line x1="3" y1="6" x2="3.01" y2="6"/>
+        <line x1="3" y1="12" x2="3.01" y2="12"/>
+        <line x1="3" y1="18" x2="3.01" y2="18"/>
+      </svg>`;
+
+      item.innerHTML = `
+        <span class="side-icon-slot">${taskListIcon}</span>
+        <span class="side-item-name">${itemData.name || 'Untitled Task List'}</span>      `;
+
+      item.onclick = () => handleTaskListClick(idx, itemData);
+
+      item.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        showTaskListContextMenu(e, itemData);
+      });
+
+      setupDraggable(item, 'task-list', itemData.taskListId, itemData.data);
+      setupDropTarget(item, 'task-list', itemData.taskListId);
       break;
 
     default:
@@ -583,6 +616,29 @@ function handleNoteClick(idx, itemData) {
 }
 
 /**
+ * Handle click on a task list item
+ */
+function handleTaskListClick(idx, itemData) {
+  const SideListState = window.Layer?.SideListState;
+
+  // Update selection
+  SideListState.setSelectedIndex(idx);
+  _playNotch();
+
+  // Switch to task-list view mode
+  AppState.setViewMode('task-list');
+
+  updateSideListSelection();
+  _renderContentView();
+  _updateTabTitle();
+
+  if (AppState.isMobile()) {
+    const Mobile = window.Layer?.Mobile;
+    if (Mobile?.setMobileView) Mobile.setMobileView('detail');
+  }
+}
+
+/**
  * Show context menu for bookmark items
  */
 function showBookmarkContextMenu(e, itemData) {
@@ -655,6 +711,51 @@ function showNoteContextMenu(e, itemData) {
                 _updateView();
               } catch (err) {
                 console.error('Failed to delete note:', err);
+              }
+            }
+          });
+        }
+      }
+    ]
+  });
+}
+
+/**
+ * Show context menu for task list items
+ */
+function showTaskListContextMenu(e, itemData) {
+  const ContextMenu = window.Layer?.ContextMenu;
+  const DeleteModal = window.Layer?.DeleteModal;
+  const TaskListStorage = window.Layer?.TaskListStorage;
+
+  if (!ContextMenu) return;
+
+  ContextMenu.showContextMenu({
+    x: e.clientX,
+    y: e.clientY,
+    items: [
+      {
+        label: 'Delete',
+        danger: true,
+        action: () => {
+          if (!DeleteModal) return;
+
+          DeleteModal.showDeleteModal({
+            itemName: itemData.name || 'Untitled Task List',
+            itemType: 'task list',
+            onConfirm: async () => {
+              try {
+                if (TaskListStorage?.deleteTaskList) {
+                  await TaskListStorage.deleteTaskList(itemData.taskListId);
+                }
+
+                // Update local state
+                const data = AppState.getData();
+                data.taskLists = data.taskLists.filter(tl => tl.id !== itemData.taskListId);
+
+                _updateView();
+              } catch (err) {
+                console.error('Failed to delete task list:', err);
               }
             }
           });

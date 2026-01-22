@@ -3773,3 +3773,227 @@ body.solarized-mode .delete-modal-btn.cancel:hover {
 .error-toast.success {
   background: #22c55e;
 }
+
+/* ============================================
+   Task List View - Minimalist Design
+   ============================================ */
+
+/* Task List Header */
+.task-list-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.task-list-name {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--text-normal);
+  outline: none;
+  caret-color: #0891b2;
+  flex: 1;
+  min-width: 0;
+}
+
+.task-list-name[contenteditable="true"] {
+  cursor: text;
+}
+
+.task-list-name:empty::before {
+  content: 'Untitled Task List';
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.add-task-btn {
+  padding: 6px 12px;
+  background: var(--bg-hover);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text-normal);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.add-task-btn:hover {
+  background: var(--bg-modifier-hover);
+  border-color: #0891b2;
+}
+
+/* Tasks Container */
+.tasks-container {
+  padding: 8px 0;
+}
+
+/* Task Item - Matches side-item styling */
+.task-item {
+  display: flex;
+  align-items: center;
+  padding: 6px 8px 6px 16px;
+  min-height: 32px;
+  color: var(--text-normal);
+  position: relative;
+  transition: background 0.1s ease;
+}
+
+.task-item:hover {
+  background: var(--bg-hover);
+}
+
+.task-item.completed {
+  opacity: 0.5;
+}
+
+.task-item.completed .task-name {
+  text-decoration: line-through;
+  color: var(--text-muted);
+}
+
+/* Task Checkbox - Matches objective step checkbox */
+.task-checkbox {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  border: 1px solid var(--text-dim);
+  border-radius: 2px;
+  margin: 2px 8px 0 0;
+  cursor: pointer;
+  flex-shrink: 0;
+  position: relative;
+  background: transparent;
+}
+
+.task-checkbox:hover {
+  border-color: var(--accent);
+}
+
+.task-checkbox:checked {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.task-checkbox:checked::after {
+  content: '✓';
+  position: absolute;
+  top: -1px;
+  left: 1px;
+  font-size: 11px;
+  color: var(--bg);
+}
+
+/* Task Toggle (Expand/Collapse) - Matches folder-toggle exactly */
+.task-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  margin-right: 4px;
+  padding: 0;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+/* On task item hover, toggle gets a square background */
+.task-item:hover .task-toggle {
+  background: var(--bg);
+}
+
+/* Toggle's own hover state */
+.task-item:hover .task-toggle:hover {
+  background: var(--bg-subtle);
+}
+
+.task-toggle svg {
+  width: 12px;
+  height: 12px;
+  stroke: var(--text-muted);
+  pointer-events: none;
+}
+
+/* Spacer for tasks without children */
+.task-spacer {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  margin-right: 4px;
+}
+
+/* Task Name - Matches side-item-name */
+.task-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  outline: none;
+  caret-color: #0891b2;
+  font-size: 13px;
+}
+
+.task-name[contenteditable="true"] {
+  cursor: text;
+  min-width: 50px;
+  white-space: pre-wrap;
+  overflow: visible;
+  text-overflow: clip;
+}
+
+.task-name:empty::before {
+  content: 'Untitled Task';
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+/* Action Buttons - Hidden by default, appear on hover */
+.add-subtask-btn,
+.delete-task-btn {
+  opacity: 0;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-muted);
+  font-size: 16px;
+  flex-shrink: 0;
+  margin-left: 4px;
+  padding: 0;
+  transition: all 0.15s ease;
+  border-radius: 2px;
+}
+
+.task-item:hover .add-subtask-btn,
+.task-item:hover .delete-task-btn {
+  opacity: 1;
+}
+
+.add-subtask-btn:hover {
+  color: #0891b2;
+  background: var(--bg-modifier-hover);
+}
+
+.delete-task-btn:hover {
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.1);
+}
+
+/* Empty State */
+.tasks-container .empty-message {
+  padding: 40px 20px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 14px;
+}

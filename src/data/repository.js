@@ -33,6 +33,19 @@ import {
   subscribeToNoteChanges
 } from './note-storage.js';
 
+import {
+  loadAllTaskLists,
+  saveTaskList,
+  deleteTaskList,
+  updateTaskListOrder,
+  subscribeToTaskListChanges,
+  loadTasksForList,
+  saveTask,
+  deleteTask,
+  updateTaskOrder,
+  updateTaskCompletion
+} from './task-list-storage.js';
+
 import * as TreeUtils from './tree-utils.js';
 import * as BookmarkStorage from './bookmark-storage.js';
 
@@ -286,6 +299,22 @@ export {
   subscribeToNoteChanges
 };
 
+/**
+ * Task list operations - re-export from task-list-storage
+ */
+export {
+  loadAllTaskLists,
+  saveTaskList,
+  deleteTaskList,
+  updateTaskListOrder,
+  subscribeToTaskListChanges,
+  loadTasksForList,
+  saveTask,
+  deleteTask,
+  updateTaskOrder,
+  updateTaskCompletion
+};
+
 // ========================================
 // Tree Operations
 // ========================================
@@ -295,14 +324,15 @@ export {
  * Updates all items with their new orderIndex and parent relationships
  */
 export async function saveTree(tree) {
-  const { objectives, folders, notes, bookmarks } = TreeUtils.treeToFlat(tree);
+  const { objectives, folders, notes, bookmarks, taskLists } = TreeUtils.treeToFlat(tree);
 
   // Batch update all types in parallel
   const updatePromises = [
     ...objectives.map(o => updateObjectiveOrder(o.id, o.orderIndex, o.folderId)),
     ...folders.map(f => updateFolder({ id: f.id, orderIndex: f.orderIndex, parentId: f.parentId })),
     ...notes.map(n => updateNoteOrder(n.id, n.orderIndex, n.folderId)),
-    ...bookmarks.map(b => BookmarkStorage.updateBookmarkOrder(b.id, b.orderIndex, b.folderId))
+    ...bookmarks.map(b => BookmarkStorage.updateBookmarkOrder(b.id, b.orderIndex, b.folderId)),
+    ...taskLists.map(tl => updateTaskListOrder(tl.id, tl.orderIndex, tl.folderId))
   ];
 
   await Promise.all(updatePromises);
@@ -372,6 +402,36 @@ export function createNote(name = '', content = '', folderId = null, orderIndex 
   };
 }
 
+/**
+ * Create a new task list
+ */
+export function createTaskList(name = '', folderId = null, orderIndex = 0) {
+  return {
+    id: null, // Let Supabase generate UUID
+    name,
+    folderId,
+    orderIndex,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  };
+}
+
+/**
+ * Create a new task
+ */
+export function createTask(name = '', taskListId, parentTaskId = null, orderIndex = 0) {
+  return {
+    id: null, // Let Supabase generate UUID
+    taskListId,
+    parentTaskId,
+    name,
+    completed: false,
+    orderIndex,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  };
+}
+
 // ========================================
 // Default Export
 // ========================================
@@ -392,6 +452,8 @@ export default {
   createPriority,
   createStep,
   createNote,
+  createTaskList,
+  createTask,
   // Tree operations
   saveTree,
   // Folder operations
@@ -406,5 +468,16 @@ export default {
   saveNote,
   deleteNote,
   updateNoteOrder,
-  subscribeToNoteChanges
+  subscribeToNoteChanges,
+  // Task list operations
+  loadAllTaskLists,
+  saveTaskList,
+  deleteTaskList,
+  updateTaskListOrder,
+  subscribeToTaskListChanges,
+  loadTasksForList,
+  saveTask,
+  deleteTask,
+  updateTaskOrder,
+  updateTaskCompletion
 };

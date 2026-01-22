@@ -15,9 +15,10 @@
  * @param {Array} folders - Flat array of folders
  * @param {Array} notes - Flat array of notes
  * @param {Array} bookmarks - Flat array of bookmarks (optional)
+ * @param {Array} taskLists - Flat array of task lists (optional)
  * @returns {Array} Tree structure
  */
-export function flatToTree(objectives = [], folders = [], notes = [], bookmarks = []) {
+export function flatToTree(objectives = [], folders = [], notes = [], bookmarks = [], taskLists = []) {
   // Build folder map with children arrays
   const folderMap = new Map();
   folders.forEach(f => {
@@ -66,6 +67,16 @@ export function flatToTree(objectives = [], folders = [], notes = [], bookmarks 
     }
   });
 
+  // Add task lists to their folders or root
+  taskLists.forEach(taskList => {
+    const item = { type: 'task-list', ...taskList };
+    if (taskList.folderId && folderMap.has(taskList.folderId)) {
+      folderMap.get(taskList.folderId).children.push(item);
+    } else {
+      rootItems.push(item);
+    }
+  });
+
   // Add root-level folders
   folders.forEach(f => {
     if (!f.parentId) {
@@ -94,13 +105,14 @@ function sortTreeByOrder(items) {
 /**
  * Convert tree structure back to flat arrays
  * @param {Array} tree - Tree structure
- * @returns {Object} { objectives, folders, notes, bookmarks }
+ * @returns {Object} { objectives, folders, notes, bookmarks, taskLists }
  */
 export function treeToFlat(tree) {
   const objectives = [];
   const folders = [];
   const notes = [];
   const bookmarks = [];
+  const taskLists = [];
 
   function traverse(items, parentId = null, depth = 0) {
     items.forEach((item, index) => {
@@ -148,6 +160,15 @@ export function treeToFlat(tree) {
             type: undefined
           });
           break;
+
+        case 'task-list':
+          taskLists.push({
+            ...item,
+            folderId: parentId,
+            orderIndex,
+            type: undefined
+          });
+          break;
       }
     });
   }
@@ -158,8 +179,9 @@ export function treeToFlat(tree) {
   objectives.forEach(o => delete o.type);
   notes.forEach(n => delete n.type);
   bookmarks.forEach(b => delete b.type);
+  taskLists.forEach(tl => delete tl.type);
 
-  return { objectives, folders, notes, bookmarks };
+  return { objectives, folders, notes, bookmarks, taskLists };
 }
 
 // ========================================
@@ -376,10 +398,10 @@ export function getAllOfType(tree, type) {
 /**
  * Count items in tree by type
  * @param {Array} tree - Tree structure
- * @returns {Object} { objectives, folders, notes, bookmarks, total }
+ * @returns {Object} { objectives, folders, notes, bookmarks, taskLists, total }
  */
 export function countItems(tree) {
-  const counts = { objectives: 0, folders: 0, notes: 0, bookmarks: 0, total: 0 };
+  const counts = { objectives: 0, folders: 0, notes: 0, bookmarks: 0, taskLists: 0, total: 0 };
 
   function traverse(nodes) {
     nodes.forEach(node => {
@@ -389,6 +411,7 @@ export function countItems(tree) {
         case 'folder': counts.folders++; break;
         case 'note': counts.notes++; break;
         case 'bookmark': counts.bookmarks++; break;
+        case 'task-list': counts.taskLists++; break;
       }
       if (node.children) {
         traverse(node.children);

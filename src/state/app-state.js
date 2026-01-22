@@ -17,7 +17,7 @@ import * as TreeUtils from '../data/tree-utils.js';
 
 const state = {
   // Data
-  data: { objectives: [], folders: [], notes: [] },
+  data: { objectives: [], folders: [], notes: [], taskLists: [] },
   tree: [],
 
   // Mobile state
@@ -75,6 +75,10 @@ export function getFolders() {
 
 export function getNotes() {
   return state.data.notes;
+}
+
+export function getTaskLists() {
+  return state.data.taskLists;
 }
 
 export function getTree() {
@@ -214,6 +218,10 @@ export function setNotes(notes) {
   state.data.notes = notes;
 }
 
+export function setTaskLists(taskLists) {
+  state.data.taskLists = taskLists;
+}
+
 /**
  * Set the tree and sync to flat arrays
  */
@@ -224,6 +232,7 @@ export function setTree(tree) {
   state.data.objectives = flat.objectives;
   state.data.folders = flat.folders;
   state.data.notes = flat.notes;
+  state.data.taskLists = flat.taskLists || [];
 }
 
 /**
@@ -235,7 +244,8 @@ export function rebuildTree(bookmarks = []) {
     state.data.objectives,
     state.data.folders,
     state.data.notes,
-    bookmarks
+    bookmarks,
+    state.data.taskLists
   );
   return state.tree;
 }
@@ -385,6 +395,7 @@ export default {
   getObjectives,
   getFolders,
   getNotes,
+  getTaskLists,
   getTree,
   getSelectedObjectiveIndex,
   getSelectedObjective,
@@ -412,6 +423,7 @@ export default {
   setObjectives,
   setFolders,
   setNotes,
+  setTaskLists,
   setTree,
   rebuildTree,
   setSelectedObjectiveIndex,

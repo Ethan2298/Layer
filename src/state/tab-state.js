@@ -16,6 +16,7 @@
  * @property {string|null} icon - Tab icon (URL for favicon, or icon type like 'home', 'folder', 'objective')
  * @property {{id: string|null, type: 'folder'|'objective'|null}} selection - Current selection
  * @property {Set<string>} expandedFolders - Set of expanded folder IDs
+ * @property {Set<string>} expandedTasks - Set of expanded task IDs
  * @property {'folder'|'objective'|'empty'} viewMode - Current view mode
  * @property {number} scrollPosition - Sidebar scroll position
  */
@@ -47,6 +48,7 @@ function createTabState(id, title = 'Home', icon = 'home') {
     icon,
     selection: { id: 'home', type: 'home' },
     expandedFolders: new Set(),
+    expandedTasks: new Set(),
     viewMode: 'home',
     scrollPosition: 0
   };
@@ -212,6 +214,63 @@ export function collapseFolder(folderId) {
 }
 
 // ========================================
+// Active Tab Accessors - Task Expansion
+// ========================================
+
+/**
+ * Check if task is expanded in active tab
+ */
+export function isTaskExpanded(taskId) {
+  const tab = getActiveTab();
+  return tab ? tab.expandedTasks.has(taskId) : false;
+}
+
+/**
+ * Toggle task expansion in active tab
+ */
+export function toggleTask(taskId) {
+  const tab = getActiveTab();
+  if (tab) {
+    if (tab.expandedTasks.has(taskId)) {
+      tab.expandedTasks.delete(taskId);
+    } else {
+      tab.expandedTasks.add(taskId);
+    }
+    saveToStorage();
+  }
+}
+
+/**
+ * Get all expanded tasks for active tab
+ */
+export function getExpandedTasks() {
+  const tab = getActiveTab();
+  return tab ? tab.expandedTasks : new Set();
+}
+
+/**
+ * Expand a task in active tab
+ */
+export function expandTask(taskId) {
+  const tab = getActiveTab();
+  if (tab) {
+    tab.expandedTasks.add(taskId);
+    saveToStorage();
+  }
+}
+
+/**
+ * Collapse a task in active tab
+ */
+export function collapseTask(taskId) {
+  const tab = getActiveTab();
+  if (tab) {
+    tab.expandedTasks.delete(taskId);
+    saveToStorage();
+  }
+}
+
+// ========================================
 // Active Tab Accessors - Scroll Position
 // ========================================
 
@@ -353,6 +412,7 @@ export function saveToStorage() {
         icon: tab.icon,
         selection: tab.selection,
         expandedFolders: Array.from(tab.expandedFolders),
+        expandedTasks: Array.from(tab.expandedTasks),
         viewMode: tab.viewMode,
         scrollPosition: tab.scrollPosition
       }))
@@ -383,6 +443,7 @@ export function loadFromStorage() {
             icon: tab.icon || null,
             selection: tab.selection || { id: null, type: null },
             expandedFolders: new Set(tab.expandedFolders || []),
+            expandedTasks: new Set(tab.expandedTasks || []),
             viewMode: tab.viewMode || 'empty',
             scrollPosition: tab.scrollPosition || 0
           });
@@ -477,6 +538,13 @@ export default {
   getExpandedFolders,
   expandFolder,
   collapseFolder,
+
+  // Task Expansion
+  isTaskExpanded,
+  toggleTask,
+  getExpandedTasks,
+  expandTask,
+  collapseTask,
 
   // Scroll Position
   getScrollPosition,

@@ -34,6 +34,7 @@ export const ItemType = {
   FOLDER: 'folder',
   BOOKMARK: 'bookmark',
   NOTE: 'note',
+  TASK_LIST: 'task-list',
   ADD_OBJECTIVE: 'add-objective',
   ADD_FOLDER: 'add-folder'
 };
@@ -64,6 +65,9 @@ export function getSelectedIndex() {
     }
     if (selection.type === 'note' && item.type === ItemType.NOTE) {
       return item.noteId === selection.id;
+    }
+    if (selection.type === 'task-list' && item.type === ItemType.TASK_LIST) {
+      return item.taskListId === selection.id;
     }
     return false;
   });
@@ -116,6 +120,8 @@ export function setSelectedIndex(index) {
       TabState.setSelection(item.bookmarkId, 'bookmark');
     } else if (item.type === ItemType.NOTE) {
       TabState.setSelection(item.noteId, 'note');
+    } else if (item.type === ItemType.TASK_LIST) {
+      TabState.setSelection(item.taskListId, 'task-list');
     }
   }
 }
@@ -150,6 +156,7 @@ export function selectItem(type, identifier) {
     if (type === ItemType.FOLDER) return item.folderId === identifier;
     if (type === ItemType.BOOKMARK) return item.bookmarkId === identifier;
     if (type === ItemType.NOTE) return item.noteId === identifier;
+    if (type === ItemType.TASK_LIST) return item.taskListId === identifier;
     return false;
   });
   if (index !== -1) {
@@ -203,7 +210,7 @@ export function collapseFolder(folderId) {
  * @param {Array} options.notes - Array of note objects
  * @param {boolean} options.isAddingObjective - Whether currently adding an objective
  */
-export function rebuildItems({ objectives = [], folders = [], notes = [], isAddingObjective = false }) {
+export function rebuildItems({ objectives = [], folders = [], notes = [], taskLists = [], isAddingObjective = false }) {
   const items = [];
 
   // Store folders for reference
@@ -234,9 +241,13 @@ export function rebuildItems({ objectives = [], folders = [], notes = [], isAddi
   const unfiledNotes = notes.filter(n => !n.folderId);
   const filedNotes = notes.filter(n => n.folderId);
 
+  // Separate unfiled and filed task lists
+  const unfiledTaskLists = taskLists.filter(tl => !tl.folderId);
+  const filedTaskLists = taskLists.filter(tl => tl.folderId);
+
   // Build folder tree structure
   const folderMap = new Map();
-  folders.forEach(f => folderMap.set(f.id, { ...f, children: [], objectives: [], bookmarks: [], notes: [] }));
+  folders.forEach(f => folderMap.set(f.id, { ...f, children: [], objectives: [], bookmarks: [], notes: [], taskLists: [] }));
 
   // Assign objectives to folders
   filedObjectives.forEach(obj => {
@@ -271,6 +282,17 @@ export function rebuildItems({ objectives = [], folders = [], notes = [], isAddi
     }
   });
 
+  // Assign task lists to folders
+  filedTaskLists.forEach(taskList => {
+    const folder = folderMap.get(taskList.folderId);
+    if (folder) {
+      folder.taskLists.push(taskList);
+    } else {
+      // Folder not found, treat as unfiled
+      unfiledTaskLists.push(taskList);
+    }
+  });
+
   // Build folder hierarchy (assign children to parents)
   const rootFolders = [];
   folderMap.forEach(folder => {
@@ -286,11 +308,12 @@ export function rebuildItems({ objectives = [], folders = [], notes = [], isAddi
     }
   });
 
-  // Combine unfiled objectives, bookmarks, notes, and root folders, then sort by orderIndex
+  // Combine unfiled objectives, bookmarks, notes, task lists, and root folders, then sort by orderIndex
   const rootItems = [
     ...unfiledObjectives.map(obj => ({ type: 'objective', data: obj, orderIndex: obj.orderIndex || 0 })),
     ...unfiledBookmarks.map(bm => ({ type: 'bookmark', data: bm, orderIndex: bm.orderIndex || 0 })),
     ...unfiledNotes.map(note => ({ type: 'note', data: note, orderIndex: note.orderIndex || 0 })),
+    ...unfiledTaskLists.map(taskList => ({ type: 'task-list', data: taskList, orderIndex: taskList.orderIndex || 0 })),
     ...rootFolders.map(folder => ({ type: 'folder', data: folder, orderIndex: folder.orderIndex || 0 }))
   ].sort((a, b) => a.orderIndex - b.orderIndex);
 
@@ -298,6 +321,7 @@ export function rebuildItems({ objectives = [], folders = [], notes = [], isAddi
   function addFolderItems(folder, depth) {
     const hasBookmarks = folder.bookmarks && folder.bookmarks.length > 0;
     const hasNotes = folder.notes && folder.notes.length > 0;
+    const hasTaskLists = folder.taskLists && folder.taskLists.length > 0;
     items.push({
       type: ItemType.FOLDER,
       folderId: folder.id,
@@ -305,16 +329,17 @@ export function rebuildItems({ objectives = [], folders = [], notes = [], isAddi
       name: folder.name,
       parentId: folder.parentId,
       depth,
-      hasChildren: folder.children.length > 0 || folder.objectives.length > 0 || hasBookmarks || hasNotes
+      hasChildren: folder.children.length > 0 || folder.objectives.length > 0 || hasBookmarks || hasNotes || hasTaskLists
     });
 
     // Only show contents if folder is expanded (use expandedFolders from TabState)
     if (expandedFolders.has(folder.id)) {
-      // Combine objectives, bookmarks, notes, and child folders, then sort by orderIndex
+      // Combine objectives, bookmarks, notes, task lists, and child folders, then sort by orderIndex
       const folderContents = [
         ...folder.objectives.map(obj => ({ type: 'objective', data: obj, orderIndex: obj.orderIndex || 0 })),
         ...(folder.bookmarks || []).map(bm => ({ type: 'bookmark', data: bm, orderIndex: bm.orderIndex || 0 })),
         ...(folder.notes || []).map(note => ({ type: 'note', data: note, orderIndex: note.orderIndex || 0 })),
+        ...(folder.taskLists || []).map(taskList => ({ type: 'task-list', data: taskList, orderIndex: taskList.orderIndex || 0 })),
         ...folder.children.map(child => ({ type: 'folder', data: child, orderIndex: child.orderIndex || 0 }))
       ].sort((a, b) => a.orderIndex - b.orderIndex);
 
@@ -350,6 +375,16 @@ export function rebuildItems({ objectives = [], folders = [], notes = [], isAddi
             noteId: note.id,
             data: note,
             name: note.name,
+            folderId: folder.id,
+            depth: depth + 1
+          });
+        } else if (item.type === 'task-list') {
+          const taskList = item.data;
+          items.push({
+            type: ItemType.TASK_LIST,
+            taskListId: taskList.id,
+            data: taskList,
+            name: taskList.name,
             folderId: folder.id,
             depth: depth + 1
           });
@@ -393,6 +428,16 @@ export function rebuildItems({ objectives = [], folders = [], notes = [], isAddi
         noteId: note.id,
         data: note,
         name: note.name,
+        folderId: null,
+        depth: 0
+      });
+    } else if (item.type === 'task-list') {
+      const taskList = item.data;
+      items.push({
+        type: ItemType.TASK_LIST,
+        taskListId: taskList.id,
+        data: taskList,
+        name: taskList.name,
         folderId: null,
         depth: 0
       });

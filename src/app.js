@@ -12,6 +12,7 @@
 import * as Repository from './data/repository.js';
 import * as BookmarkStorage from './data/bookmark-storage.js';
 import * as NoteStorage from './data/note-storage.js';
+import * as TaskListStorage from './data/task-list-storage.js';
 import * as TreeUtils from './data/tree-utils.js';
 import * as TabState from './state/tab-state.js';
 import * as TabContentManager from './state/tab-content-manager.js';
@@ -61,6 +62,7 @@ import * as GlobalNav from './components/global-nav.js';
 import * as TiptapEditor from './components/tiptap-editor.js';
 import * as DirectoryListing from './components/directory-listing.js';
 import * as Toast from './components/toast.js';
+import * as TaskListView from './components/task-list-view.js';
 
 // ========================================
 // Global Window Reference
@@ -73,6 +75,7 @@ window.Layer = {
   Repository,
   BookmarkStorage,
   NoteStorage,
+  TaskListStorage,
   TreeUtils,
   TabState,
   TabContentManager,
@@ -109,6 +112,7 @@ window.Layer = {
   TiptapEditor,
   DirectoryListing,
   Toast,
+  TaskListView,
   Tabs
 };
 
@@ -356,6 +360,13 @@ async function initStorage() {
       AppState.setNotes(notes);
     }
 
+    // Load task lists
+    if (TaskListStorage.loadAllTaskLists) {
+      const taskLists = await TaskListStorage.loadAllTaskLists();
+      console.log('Loaded', taskLists.length, 'task lists from Supabase');
+      AppState.setTaskLists(taskLists);
+    }
+
     // Build tree from flat data (includes bookmarks from localStorage)
     const bookmarks = BookmarkStorage.loadAllBookmarks?.() || [];
     AppState.rebuildTree(bookmarks);
@@ -410,6 +421,26 @@ async function initStorage() {
         updateView();
       });
       console.log('Subscribed to note realtime updates');
+    }
+
+    // Subscribe to task list changes
+    if (TaskListStorage.subscribeToTaskListChanges) {
+      TaskListStorage.subscribeToTaskListChanges(async (payload) => {
+        // Skip refreshing for task lists we just saved locally (avoid editing loop)
+        const taskListId = payload.new?.id || payload.old?.id;
+        if (taskListId && TaskListStorage.wasRecentlySavedLocally?.(taskListId)) {
+          console.log('Task list realtime update received but skipping (local save):', taskListId);
+          return;
+        }
+
+        console.log('Task list realtime update received, refreshing...');
+        const taskLists = await TaskListStorage.loadAllTaskLists();
+        AppState.setTaskLists(taskLists);
+        const bm = BookmarkStorage.loadAllBookmarks?.() || [];
+        AppState.rebuildTree(bm);
+        updateView();
+      });
+      console.log('Subscribed to task list realtime updates');
     }
   } catch (e) {
     console.warn('Storage init failed:', e);
@@ -499,6 +530,44 @@ async function addNewNote() {
   }
 }
 
+/**
+ * Add new task list
+ */
+async function addNewTaskList() {
+  try {
+    if (!TaskListStorage.saveTaskList) {
+      console.warn('TaskListStorage.saveTaskList not available');
+      return;
+    }
+
+    const taskList = Repository.createTaskList('New Task List', null, 0);
+    const savedTaskList = await TaskListStorage.saveTaskList(taskList);
+    console.log('Created task list:', savedTaskList);
+
+    // Reload task lists
+    const taskLists = await TaskListStorage.loadAllTaskLists();
+    AppState.setTaskLists(taskLists);
+
+    // Rebuild tree
+    const bm = BookmarkStorage.loadAllBookmarks?.() || [];
+    AppState.rebuildTree(bm);
+
+    // Select the new task list
+    if (SideListState) {
+      SideList.renderSideList();
+      SideListState.selectItem(SideListState.ItemType.TASK_LIST, savedTaskList.id);
+    }
+
+    // Switch to task-list view
+    AppState.setViewMode('task-list');
+    ContentView.renderContentView();
+    updateTabTitleFromSelection();
+  } catch (err) {
+    console.error('Failed to create task list:', err);
+    showMessage('Failed to create task list');
+  }
+}
+
 // ========================================
 // Event Handlers
 // ========================================
@@ -517,7 +586,8 @@ function initEventHandlers() {
     const menuItems = [
       { label: 'New Folder', action: () => addNewFolder() },
       { label: 'New Objective', action: () => addNewObjective() },
-      { label: 'New Note', action: () => addNewNote() }
+      { label: 'New Note', action: () => addNewNote() },
+      { label: 'New Task List', action: () => addNewTaskList() }
     ];
 
     const estimatedMenuHeight = menuItems.length * 29 + 8;

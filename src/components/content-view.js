@@ -14,6 +14,7 @@ import GlobalNav from './global-nav.js';
 import { setupInlineEdit } from '../utils/inline-edit.js';
 import { executeNoteCommand } from './tiptap-editor.js';
 import { renderDirectoryListing } from './directory-listing.js';
+import * as TaskListView from './task-list-view.js';
 
 // ========================================
 // Callbacks (set by app.js)
@@ -172,6 +173,7 @@ export function renderContentView(options = {}) {
     contentPage?.classList.add('web-mode');
     app?.classList.add('web-mode');
     contentView?.classList.remove('note-mode');
+    contentView?.classList.remove('task-list-mode');
     // Update header for web view (even if not re-rendering)
     if (headerTitle) headerTitle.textContent = 'Web';
     if (headerDesc) headerDesc.textContent = '';
@@ -179,10 +181,17 @@ export function renderContentView(options = {}) {
     contentPage?.classList.remove('web-mode');
     app?.classList.remove('web-mode');
     contentView?.classList.add('note-mode');
+    contentView?.classList.remove('task-list-mode');
+  } else if (viewMode === 'task-list') {
+    contentPage?.classList.remove('web-mode');
+    app?.classList.remove('web-mode');
+    contentView?.classList.remove('note-mode');
+    contentView?.classList.add('task-list-mode');
   } else {
     contentPage?.classList.remove('web-mode');
     app?.classList.remove('web-mode');
     contentView?.classList.remove('note-mode');
+    contentView?.classList.remove('task-list-mode');
   }
 
   if (shouldReRender) {
@@ -198,6 +207,8 @@ export function renderContentView(options = {}) {
       renderSettingsViewInContainer(container);
     } else if (viewMode === 'note') {
       renderNoteViewInContainer(container);
+    } else if (viewMode === 'task-list') {
+      renderTaskListViewInContainer(container);
     } else {
       renderObjectiveViewInContainer(container);
     }
@@ -818,6 +829,62 @@ export function renderNoteView() {
   const container = TabContentManager.getOrCreateContainer(activeTabId);
   renderNoteViewInContainer(container);
   TabContentManager.setContainerViewMode(activeTabId, 'note');
+}
+
+/**
+ * Render task list view into a container
+ * @param {HTMLElement} container - The container to render into
+ */
+async function renderTaskListViewInContainer(container) {
+  const SideListState = window.Layer?.SideListState;
+  const selectedItem = SideListState?.getSelectedItem();
+  const taskList = selectedItem?.data;
+
+  const contentPage = document.getElementById('content-page');
+  const headerTitle = document.getElementById('content-header-title');
+  const headerDesc = document.getElementById('content-header-description');
+  const app = document.getElementById('app');
+
+  if (!headerTitle) return;
+
+  // Cleanup any previous header edit handlers
+  cleanupHeaderEdits();
+
+  // Remove web-mode if present
+  if (contentPage) contentPage.classList.remove('web-mode');
+  if (app) app.classList.remove('web-mode');
+
+  if (!taskList) {
+    headerTitle.textContent = 'Select a task list';
+    headerTitle.setAttribute('contenteditable', 'false');
+    if (headerDesc) {
+      headerDesc.textContent = '';
+      headerDesc.setAttribute('contenteditable', 'false');
+    }
+    container.innerHTML = '';
+    return;
+  }
+
+  // Hide header for task list view (task list component has its own header)
+  headerTitle.textContent = '';
+  headerTitle.setAttribute('contenteditable', 'false');
+  if (headerDesc) {
+    headerDesc.textContent = '';
+    headerDesc.setAttribute('contenteditable', 'false');
+  }
+
+  // Render task list view
+  await TaskListView.renderTaskListView(container, taskList);
+}
+
+/**
+ * Render task list view (backward compatibility wrapper)
+ */
+export function renderTaskListView() {
+  const activeTabId = TabState.getActiveTabId();
+  const container = TabContentManager.getOrCreateContainer(activeTabId);
+  renderTaskListViewInContainer(container);
+  TabContentManager.setContainerViewMode(activeTabId, 'task-list');
 }
 
 /**
