@@ -253,6 +253,25 @@ export function subscribeToNoteChanges(onChangeCallback) {
 }
 
 // ========================================
+// Format Detection
+// ========================================
+
+/**
+ * Check if content is in Editor.js format
+ * @param {string} content - Content string to check
+ * @returns {boolean} True if content is Editor.js JSON format
+ */
+export function isEditorJsFormat(content) {
+  if (!content || typeof content !== 'string') return false;
+  try {
+    const parsed = JSON.parse(content);
+    return parsed && Array.isArray(parsed.blocks);
+  } catch {
+    return false;
+  }
+}
+
+// ========================================
 // Exports
 // ========================================
 
@@ -262,5 +281,6 @@ export default {
   deleteNote,
   updateNoteOrder,
   subscribeToNoteChanges,
-  wasRecentlySavedLocally
+  wasRecentlySavedLocally,
+  isEditorJsFormat
 };

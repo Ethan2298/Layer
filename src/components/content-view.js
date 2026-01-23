@@ -775,48 +775,77 @@ async function renderNoteViewInContainer(container) {
     restoreOnEmpty: true
   });
 
-  // Clear container and render tiptap editor
+  // Clear container and render Editor.js editor
   container.innerHTML = '';
 
   const editorContainer = document.createElement('div');
   editorContainer.className = 'note-editor-container';
   container.appendChild(editorContainer);
 
-  // Initialize tiptap editor for note content
-  const TiptapEditor = window.Layer?.TiptapEditor;
-  if (TiptapEditor?.initNoteEditor) {
-    await TiptapEditor.initNoteEditor(
-      note.content || '',
+  // Get modules for Editor.js and HTML migration
+  const EditorJsEditor = window.Layer?.EditorJsEditor;
+  const HtmlToEditorJs = window.Layer?.HtmlToEditorJs;
+  const NoteStorage = window.Layer?.NoteStorage;
+
+  // Prepare content - lazy migrate HTML to Editor.js format if needed
+  let editorContent = note.content || '';
+  if (editorContent && NoteStorage?.isEditorJsFormat && !NoteStorage.isEditorJsFormat(editorContent)) {
+    // Content is HTML (from Tiptap) - convert to Editor.js format
+    if (HtmlToEditorJs?.convert) {
+      console.log('Converting HTML content to Editor.js format for note:', note.id);
+      editorContent = HtmlToEditorJs.convert(editorContent);
+    }
+  }
+
+  // Initialize Editor.js editor for note content
+  if (EditorJsEditor?.initNoteEditor) {
+    await EditorJsEditor.initNoteEditor(
+      editorContent,
       note.id,
       editorContainer,
-      async (html) => {
+      async (jsonContent) => {
         // Auto-save callback
-        note.content = html;
+        note.content = jsonContent;
         note.updatedAt = new Date().toISOString();
-        const NoteStorage = window.Layer?.NoteStorage;
         if (NoteStorage?.saveNote) {
           await NoteStorage.saveNote(note);
         }
       }
     );
   } else {
-    // Fallback if tiptap is not ready
-    editorContainer.innerHTML = `
-      <div class="note-fallback-editor">
-        <textarea class="note-content-textarea" placeholder="Write your note...">${note.content || ''}</textarea>
-      </div>
-    `;
-
-    const textarea = editorContainer.querySelector('.note-content-textarea');
-    if (textarea) {
-      textarea.addEventListener('blur', async () => {
-        note.content = textarea.value;
-        note.updatedAt = new Date().toISOString();
-        const NoteStorage = window.Layer?.NoteStorage;
-        if (NoteStorage?.saveNote) {
-          await NoteStorage.saveNote(note);
+    // Fallback if Editor.js is not ready - try Tiptap
+    const TiptapEditor = window.Layer?.TiptapEditor;
+    if (TiptapEditor?.initNoteEditor) {
+      await TiptapEditor.initNoteEditor(
+        note.content || '',
+        note.id,
+        editorContainer,
+        async (html) => {
+          note.content = html;
+          note.updatedAt = new Date().toISOString();
+          if (NoteStorage?.saveNote) {
+            await NoteStorage.saveNote(note);
+          }
         }
-      });
+      );
+    } else {
+      // Final fallback - textarea
+      editorContainer.innerHTML = `
+        <div class="note-fallback-editor">
+          <textarea class="note-content-textarea" placeholder="Write your note...">${note.content || ''}</textarea>
+        </div>
+      `;
+
+      const textarea = editorContainer.querySelector('.note-content-textarea');
+      if (textarea) {
+        textarea.addEventListener('blur', async () => {
+          note.content = textarea.value;
+          note.updatedAt = new Date().toISOString();
+          if (NoteStorage?.saveNote) {
+            await NoteStorage.saveNote(note);
+          }
+        });
+      }
     }
   }
 }

@@ -1,0 +1,168 @@
+/**
+ * Generic Sortable Drag-and-Drop Styles
+ *
+ * These styles work with the sortable.js module and can be used for any
+ * sortable list. Consumer modules can override these with more specific
+ * selectors if needed.
+ */
+
+/* ========================================
+   Sortable Item Base States
+   ======================================== */
+
+/* Make sortable items interactive */
+.sortable-enabled {
+  cursor: grab;
+  touch-action: none; /* Prevent scroll interference on touch */
+}
+
+.sortable-enabled:active {
+  cursor: grabbing;
+}
+
+/* Item being dragged (original position) */
+.dragging {
+  opacity: 0.4;
+  user-select: none;
+  pointer-events: none;
+}
+
+/* ========================================
+   Container States
+   ======================================== */
+
+/* Disable normal hover effects during drag */
+.is-dragging .sortable-enabled:not(.sortable-drop-target):hover {
+  background: transparent;
+}
+
+/* Hide action buttons during drag */
+.is-dragging .sortable-enabled .item-actions {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* ========================================
+   Placeholder (Drop Position Indicator)
+   ======================================== */
+
+/* Placeholder line style - minimal height with visible indicator */
+.sortable-placeholder {
+  height: 0 !important;
+  min-height: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border: none !important;
+  background: transparent;
+  pointer-events: none;
+  position: relative;
+}
+
+.sortable-placeholder::before {
+  content: '';
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  top: -1px;
+  height: 2px;
+  background: var(--accent, #0891b2);
+  border-radius: 1px;
+}
+
+/* ========================================
+   Drop Targets
+   ======================================== */
+
+/* Valid drop target hover state (e.g., dropping into folder) */
+.sortable-drop-target {
+  background: var(--bg-hover, rgba(255, 255, 255, 0.05));
+  box-shadow: inset 2px 0 0 var(--accent, #0891b2);
+}
+
+/* Invalid drop target (e.g., circular reference) */
+.sortable-drop-invalid {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+/* ========================================
+   jQuery UI Helper (Dragged Clone)
+   ======================================== */
+
+.ui-sortable-helper {
+  z-index: 1000 !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  background: var(--bg-surface, #1a1a1a);
+  border-radius: 4px;
+}
+
+body.light-mode .ui-sortable-helper {
+  background: var(--bg-surface, #fff);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* ========================================
+   Drag Insertion Indicator (Alternative Style)
+   ======================================== */
+
+.drag-insert-indicator {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--accent, #0891b2);
+  pointer-events: none;
+  z-index: 100;
+  opacity: 0;
+  transition: opacity 0.1s;
+}
+
+.drag-insert-indicator.visible {
+  opacity: 1;
+}
+
+/* Indicator end dots */
+.drag-insert-indicator::before,
+.drag-insert-indicator::after {
+  content: '';
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  background: var(--accent, #0891b2);
+  border-radius: 50%;
+  top: -2px;
+}
+
+.drag-insert-indicator::before { left: 0; }
+.drag-insert-indicator::after { right: 0; }
+
+/* ========================================
+   Utility Classes
+   ======================================== */
+
+/* Hide children during folder drag */
+.drag-hidden {
+  display: none !important;
+}
+
+/* Generic drag-over state */
+.drag-over {
+  background: var(--bg-hover, rgba(255, 255, 255, 0.05));
+}
+
+/* ========================================
+   Drop Zone (for unfiled/root areas)
+   ======================================== */
+
+.sortable-drop-zone {
+  min-height: 20px;
+  border: 1px dashed transparent;
+  transition: border-color 0.15s, background 0.15s;
+  margin: 4px 8px;
+  border-radius: 4px;
+}
+
+.sortable-drop-zone.drag-over {
+  border-color: var(--accent, #0891b2);
+  background: rgba(8, 145, 178, 0.1);
+}
