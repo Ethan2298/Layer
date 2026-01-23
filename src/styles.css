@@ -4072,6 +4072,20 @@ h3.ce-header {
   background: var(--accent-alpha, rgba(59, 130, 246, 0.3));
 }
 
+/* Drag-drop styling */
+.ce-block__content {
+  transition: border 100ms ease-out;
+}
+
+/* Ghost effect on block being dragged */
+.ce-block--dragging {
+  opacity: 0.3;
+}
+
+.ce-block--drop-target .ce-block__content:before {
+  display: none;
+}
+
 /* ========================================
    Editor.js New Plugin Styles
    ======================================== */

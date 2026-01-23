@@ -1,0 +1,40 @@
+This directory contains Editor.js and its plugins, used under their respective licenses.
+
+================================================================================
+EditorJS Core and Official Plugins (@editorjs/*)
+================================================================================
+Apache License 2.0
+Copyright (c) CodeX Team
+https://github.com/codex-team/editor.js
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+
+================================================================================
+Community Plugins (MIT License)
+================================================================================
+The following plugins are licensed under MIT:
+
+- editorjs-drag-drop (c) kommitters
+- editorjs-toggle-block (c) kommitters
+- editorjs-undo (c) kommitters
+- editorjs-text-color-plugin
+- editorjs-text-alignment-blocktune
+- @sotaproject/strikethrough
+
+MIT License: Permission is hereby granted, free of charge, to any person
+obtaining a copy of this software to deal in the Software without restriction.
+
+================================================================================
+Local Modifications
+================================================================================
+drag-drop.js - Modified to add custom ghost drag image (setDragImage)

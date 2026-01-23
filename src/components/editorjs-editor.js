@@ -3,99 +3,45 @@
  *
  * Provides a Notion-style block-based editing experience for notes.
  * Uses Editor.js with plugins for headings, lists, quotes, code, etc.
+ *
+ * All plugins are loaded from local files (src/lib/editorjs/) to allow
+ * customization, specifically for drag-drop ghost image behavior.
  */
 
 // ========================================
-// Editor.js Imports via ESM.sh CDN
+// Editor.js Imports from Local Files
 // ========================================
 
-let EditorJS = null;
-let Header = null;
-let NestedList = null;
-let Checklist = null;
-let Quote = null;
-let CodeTool = null;
-let Delimiter = null;
-let InlineCode = null;
-let Marker = null;
-// New plugins
-let Table = null;
-let LinkTool = null;
-let Embed = null;
-let Warning = null;
-let Toggle = null;
-let Underline = null;
-let Strikethrough = null;
-let ColorPlugin = null;
-let AlignmentTune = null;
-let Undo = null;
-let editorjsLoaded = false;
-let loadPromise = null;
+import {
+  EditorJS,
+  Header,
+  NestedList,
+  Checklist,
+  Quote,
+  CodeTool,
+  Delimiter,
+  InlineCode,
+  Marker,
+  Table,
+  LinkTool,
+  Embed,
+  Warning,
+  Toggle,
+  Underline,
+  Strikethrough,
+  ColorPlugin,
+  AlignmentTune,
+  Undo,
+  DragDrop
+} from '../lib/editorjs/index.js';
 
 /**
- * Load Editor.js modules from CDN
+ * Load Editor.js modules (no-op - modules are now statically imported)
+ * Kept for API compatibility
  */
 export async function loadEditorJs() {
-  if (editorjsLoaded) return;
-  if (loadPromise) return loadPromise;
-
-  loadPromise = (async () => {
-    try {
-      console.log('Loading Editor.js from CDN...');
-
-      const modules = await Promise.all([
-        import('https://esm.sh/@editorjs/editorjs@2.29.0'),
-        import('https://esm.sh/@editorjs/header@2.8.1'),
-        import('https://esm.sh/@editorjs/nested-list@1.4.2'),
-        import('https://esm.sh/@editorjs/checklist@1.6.0'),
-        import('https://esm.sh/@editorjs/quote@2.6.0'),
-        import('https://esm.sh/@editorjs/code@2.9.0'),
-        import('https://esm.sh/@editorjs/delimiter@1.4.0'),
-        import('https://esm.sh/@editorjs/inline-code@1.5.0'),
-        import('https://esm.sh/@editorjs/marker@1.4.0'),
-        // New plugins
-        import('https://esm.sh/@editorjs/table@2.3.0'),
-        import('https://esm.sh/@editorjs/link@2.6.2'),
-        import('https://esm.sh/@editorjs/embed@2.7.4'),
-        import('https://esm.sh/@editorjs/warning@1.4.0'),
-        import('https://esm.sh/editorjs-toggle-block'),
-        import('https://esm.sh/@editorjs/underline@1.1.0'),
-        import('https://esm.sh/@sotaproject/strikethrough@1.0.1'),
-        import('https://esm.sh/editorjs-text-color-plugin'),
-        import('https://esm.sh/editorjs-text-alignment-blocktune'),
-        import('https://esm.sh/editorjs-undo'),
-      ]);
-
-      EditorJS = modules[0].default;
-      Header = modules[1].default;
-      NestedList = modules[2].default;
-      Checklist = modules[3].default;
-      Quote = modules[4].default;
-      CodeTool = modules[5].default;
-      Delimiter = modules[6].default;
-      InlineCode = modules[7].default;
-      Marker = modules[8].default;
-      // New plugins
-      Table = modules[9].default;
-      LinkTool = modules[10].default;
-      Embed = modules[11].default;
-      Warning = modules[12].default;
-      Toggle = modules[13].default;
-      Underline = modules[14].default;
-      Strikethrough = modules[15].default;
-      ColorPlugin = modules[16].default;
-      AlignmentTune = modules[17].default;
-      Undo = modules[18].default;
-
-      editorjsLoaded = true;
-      console.log('Editor.js loaded successfully');
-    } catch (error) {
-      console.error('Failed to load Editor.js:', error);
-      throw error;
-    }
-  })();
-
-  return loadPromise;
+  // Modules are statically imported, nothing to load
+  return Promise.resolve();
 }
 
 // ========================================
@@ -119,8 +65,7 @@ const AUTOSAVE_DELAY = 1000; // 1 second debounce
  * @param {Function} onAutoSave - Callback when content changes (receives JSON string)
  */
 export async function initNoteEditor(content, noteId, container, onAutoSave) {
-  // Load Editor.js if not already loaded
-  await loadEditorJs();
+  // Editor.js modules are now statically imported
 
   // Destroy existing editor
   destroyNoteEditor();
@@ -288,7 +233,9 @@ export async function initNoteEditor(content, noteId, container, onAutoSave) {
     onReady: () => {
       // Initialize undo/redo functionality
       new Undo({ editor: editorInstance });
-      console.log('Editor.js is ready with undo/redo');
+      // Initialize drag-and-drop block reordering with custom border style
+      // Ghost image is now handled directly in the local drag-drop.js plugin
+      new DragDrop(editorInstance, '2px solid var(--accent, #0891b2)');
     }
   });
 
