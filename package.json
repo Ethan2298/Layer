@@ -6,6 +6,8 @@
   "scripts": {
     "start": "electron .",
     "web": "npx serve .",
+    "dev": "doppler run --config dev_personal -- node scripts/inject-secrets.js && npx serve .",
+    "inject-secrets": "doppler run --config dev_personal -- node scripts/inject-secrets.js",
     "terminal": "node life.js"
   },
   "dependencies": {

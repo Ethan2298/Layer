@@ -945,6 +945,121 @@ body.solarized-mode .web-search-dropdown {
   }
 }
 
+/* Chat Markdown Styles */
+.chat-bubble-markdown {
+  line-height: 1.5;
+}
+
+.chat-bubble-markdown p {
+  margin: 0 0 0.75em 0;
+}
+
+.chat-bubble-markdown p:last-child {
+  margin-bottom: 0;
+}
+
+.chat-bubble-markdown h1,
+.chat-bubble-markdown h2,
+.chat-bubble-markdown h3,
+.chat-bubble-markdown h4,
+.chat-bubble-markdown h5,
+.chat-bubble-markdown h6 {
+  margin: 1em 0 0.5em 0;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.chat-bubble-markdown h1:first-child,
+.chat-bubble-markdown h2:first-child,
+.chat-bubble-markdown h3:first-child {
+  margin-top: 0;
+}
+
+.chat-bubble-markdown h1 { font-size: 1.4em; }
+.chat-bubble-markdown h2 { font-size: 1.25em; }
+.chat-bubble-markdown h3 { font-size: 1.1em; }
+.chat-bubble-markdown h4,
+.chat-bubble-markdown h5,
+.chat-bubble-markdown h6 { font-size: 1em; }
+
+.chat-bubble-markdown code {
+  background: var(--bg);
+  padding: 0.15em 0.4em;
+  border-radius: 4px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.9em;
+}
+
+.chat-bubble-markdown pre {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 12px;
+  margin: 0.75em 0;
+  overflow-x: auto;
+}
+
+.chat-bubble-markdown pre code {
+  background: none;
+  padding: 0;
+  font-size: 0.85em;
+  line-height: 1.5;
+}
+
+.chat-bubble-markdown ul,
+.chat-bubble-markdown ol {
+  margin: 0.5em 0;
+  padding-left: 1.5em;
+}
+
+.chat-bubble-markdown li {
+  margin: 0.25em 0;
+}
+
+.chat-bubble-markdown blockquote {
+  margin: 0.75em 0;
+  padding-left: 1em;
+  border-left: 3px solid var(--border);
+  color: var(--text-muted);
+}
+
+.chat-bubble-markdown a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.chat-bubble-markdown a:hover {
+  text-decoration: underline;
+}
+
+.chat-bubble-markdown hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 1em 0;
+}
+
+.chat-bubble-markdown strong {
+  font-weight: 600;
+}
+
+.chat-bubble-markdown table {
+  border-collapse: collapse;
+  margin: 0.75em 0;
+  width: 100%;
+}
+
+.chat-bubble-markdown th,
+.chat-bubble-markdown td {
+  border: 1px solid var(--border);
+  padding: 0.5em 0.75em;
+  text-align: left;
+}
+
+.chat-bubble-markdown th {
+  background: var(--bg);
+  font-weight: 600;
+}
+
 #agent-panel-input {
   margin: 8px;
   border: 1px solid var(--border);
@@ -2332,6 +2447,104 @@ body.light-mode .settings-modal-overlay {
 
 body.solarized-mode .settings-modal-overlay {
   background: rgba(0, 43, 54, 0.6);
+}
+
+/* Settings - Vertical Items */
+.settings-item-vertical {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 0.75rem 0;
+}
+
+.settings-item-vertical label {
+  color: var(--text);
+  font-size: 0.95rem;
+}
+
+.settings-item-hint {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+/* Settings - API Key Input */
+.settings-api-key-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.settings-input {
+  flex: 1;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  padding: 0.5rem 0.75rem;
+  font-size: 0.9rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.settings-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.settings-input::placeholder {
+  color: var(--text-dim);
+}
+
+.settings-api-key-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-subtle);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.settings-api-key-toggle:hover {
+  background: var(--bg-hover);
+  color: var(--text);
+}
+
+/* Chat Error Bubble */
+.chat-bubble-error {
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #ef4444;
+}
+
+.chat-bubble-error a {
+  color: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.chat-bubble-error a:hover {
+  opacity: 0.8;
+}
+
+/* System Messages */
+.chat-message-system {
+  justify-content: center;
+  max-width: 100%;
+}
+
+.chat-message-system .chat-bubble {
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  text-align: center;
+  padding: 8px 12px;
 }
 
 /* ========================================

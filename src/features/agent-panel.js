@@ -4,6 +4,10 @@
  * Right-side agent chat panel with toggle and resize functionality.
  */
 
+import * as AnthropicService from '../services/anthropic-service.js';
+import * as ChatContext from '../services/chat-context.js';
+import * as smd from '../vendor/smd.js';
+
 // ========================================
 // Constants
 // ========================================
@@ -32,6 +36,9 @@ const MODE_ICONS = {
 let isResizing = false;
 let currentMode = MODES.AGENT;
 let messages = [];
+let isStreaming = false;
+let currentAbortController = null;
+let currentParser = null;
 
 // ========================================
 // Panel Toggle
@@ -336,8 +343,17 @@ function renderMessage(message) {
   el.dataset.messageId = message.id;
 
   const bubble = document.createElement('div');
-  bubble.className = 'chat-bubble';
-  bubble.textContent = message.content;
+  bubble.className = message.role === 'assistant' ? 'chat-bubble chat-bubble-markdown' : 'chat-bubble';
+
+  if (message.role === 'assistant') {
+    // Render markdown for assistant messages
+    const renderer = smd.default_renderer(bubble);
+    const parser = smd.parser(renderer);
+    smd.parser_write(parser, message.content);
+    smd.parser_end(parser);
+  } else {
+    bubble.textContent = message.content;
+  }
 
   el.appendChild(bubble);
   container.appendChild(el);
@@ -384,54 +400,207 @@ function removeTypingIndicator() {
 }
 
 /**
- * Generate a dummy AI response based on mode
- * @param {string} userMessage
+ * Create an empty streaming bubble for assistant response
+ * Initializes the streaming markdown parser
+ * @returns {Object} Parser instance
  */
-function generateDummyResponse(userMessage) {
-  const responses = {
-    [MODES.AGENT]: [
-      "I'll help you with that. Let me break this down into steps...",
-      "Working on it. I've identified a few approaches we could take.",
-      "Understood. I'll start by analyzing what needs to be done.",
-      "Got it. Here's my plan for tackling this..."
-    ],
-    [MODES.ASK]: [
-      "That's a great question. Here's what I think...",
-      "Based on my understanding, the answer would be...",
-      "Let me explain that for you.",
-      "Here's what you should know about this..."
-    ]
-  };
+function createStreamingBubble() {
+  const container = document.getElementById('agent-panel-content');
+  if (!container) return null;
 
-  const modeResponses = responses[currentMode] || responses[MODES.AGENT];
-  return modeResponses[Math.floor(Math.random() * modeResponses.length)];
+  const el = document.createElement('div');
+  el.className = 'chat-message chat-message-assistant';
+  el.id = 'streaming-message';
+
+  const bubble = document.createElement('div');
+  bubble.className = 'chat-bubble chat-bubble-markdown';
+  bubble.id = 'streaming-bubble';
+
+  el.appendChild(bubble);
+  container.appendChild(el);
+  scrollToBottom();
+
+  // Initialize streaming markdown parser
+  const renderer = smd.default_renderer(bubble);
+  currentParser = smd.parser(renderer);
+
+  return currentParser;
+}
+
+/**
+ * Write a chunk to the streaming markdown parser
+ * @param {string} chunk - New chunk of text
+ */
+function writeStreamingChunk(chunk) {
+  if (currentParser) {
+    smd.parser_write(currentParser, chunk);
+    scrollToBottom();
+  }
+}
+
+/**
+ * Finalize streaming bubble (end parser and clean up)
+ * @param {string} content - Final content for context
+ */
+function finalizeStreamingBubble(content) {
+  // End the parser to flush any remaining content
+  if (currentParser) {
+    smd.parser_end(currentParser);
+    currentParser = null;
+  }
+
+  const el = document.getElementById('streaming-message');
+  const bubble = document.getElementById('streaming-bubble');
+
+  if (el) {
+    el.removeAttribute('id');
+    el.dataset.messageId = Date.now();
+  }
+
+  if (bubble) {
+    bubble.removeAttribute('id');
+  }
+
+  // Add to messages array
+  messages.push({
+    id: Date.now(),
+    content,
+    role: 'assistant',
+    timestamp: new Date()
+  });
+
+  // Add to conversation context
+  ChatContext.addMessage('assistant', content);
+}
+
+/**
+ * Handle API errors
+ * @param {Error} error
+ */
+function handleApiError(error) {
+  removeTypingIndicator();
+  const streamingEl = document.getElementById('streaming-message');
+  if (streamingEl) streamingEl.remove();
+
+  const container = document.getElementById('agent-panel-content');
+  if (!container) return;
+
+  const el = document.createElement('div');
+  el.className = 'chat-message chat-message-assistant';
+
+  const bubble = document.createElement('div');
+  bubble.className = 'chat-bubble chat-bubble-error';
+
+  let errorMessage = 'Something went wrong. Please try again.';
+
+  if (error.message === 'NO_API_KEY') {
+    errorMessage = 'No API key configured. Run: doppler run -- npm run web';
+  } else if (error.status === 401) {
+    errorMessage = 'Invalid API key. Check your Doppler configuration.';
+  } else if (error.status === 429) {
+    errorMessage = 'Rate limited. Please wait a moment and try again.';
+  } else if (error.message?.includes('Failed to fetch') || error.message?.includes('NetworkError')) {
+    errorMessage = 'Network error. Please check your connection.';
+  } else if (error.message) {
+    errorMessage = error.message;
+  }
+
+  bubble.innerHTML = errorMessage;
+  el.appendChild(bubble);
+  container.appendChild(el);
+  scrollToBottom();
+
+  isStreaming = false;
+}
+
+/**
+ * Cancel ongoing stream
+ */
+export function cancelStream() {
+  if (currentAbortController) {
+    currentAbortController.abort();
+    currentAbortController = null;
+  }
+  if (currentParser) {
+    smd.parser_end(currentParser);
+    currentParser = null;
+  }
+  isStreaming = false;
 }
 
 /**
  * Handle sending a message
  */
-function sendMessage() {
+async function sendMessage() {
   const textarea = document.getElementById('agent-input-text');
   if (!textarea) return;
 
   const content = textarea.value.trim();
   if (!content) return;
 
-  // Add user message
+  // Don't allow sending while streaming
+  if (isStreaming) return;
+
+  // Add user message to UI
   addMessage(content, 'user');
+
+  // Add to conversation context
+  ChatContext.addMessage('user', content);
 
   // Clear input
   textarea.value = '';
   textarea.style.height = 'auto';
 
-  // Show typing indicator and send dummy response after delay
-  showTypingIndicator();
+  // Check for API key first
+  if (!AnthropicService.hasApiKey()) {
+    handleApiError(new Error('NO_API_KEY'));
+    return;
+  }
 
-  setTimeout(() => {
-    removeTypingIndicator();
-    const response = generateDummyResponse(content);
-    addMessage(response, 'assistant');
-  }, 800 + Math.random() * 400);
+  // Show typing indicator
+  showTypingIndicator();
+  isStreaming = true;
+
+  // Create abort controller for cancellation
+  currentAbortController = new AbortController();
+
+  // Create streaming bubble
+  let streamingBubble = null;
+
+  await AnthropicService.sendMessage({
+    message: content,
+    mode: currentMode,
+    conversationHistory: ChatContext.getConversationHistory().slice(0, -1), // Exclude the message we just added
+    signal: currentAbortController.signal,
+
+    onChunk: (chunk, fullText) => {
+      // Remove typing indicator on first chunk
+      removeTypingIndicator();
+
+      // Create parser if not exists
+      if (!streamingBubble) {
+        streamingBubble = createStreamingBubble();
+      }
+
+      // Write chunk to streaming markdown parser
+      writeStreamingChunk(chunk);
+    },
+
+    onComplete: (fullText) => {
+      removeTypingIndicator();
+      isStreaming = false;
+      currentAbortController = null;
+
+      if (fullText) {
+        finalizeStreamingBubble(fullText);
+      }
+    },
+
+    onError: (error) => {
+      handleApiError(error);
+      currentAbortController = null;
+    }
+  });
 }
 
 /**
@@ -460,7 +629,12 @@ function initChatInput() {
  * Clear all messages
  */
 export function clearMessages() {
+  // Cancel any ongoing stream
+  cancelStream();
+
   messages = [];
+  ChatContext.clearHistory();
+
   const container = document.getElementById('agent-panel-content');
   if (container) {
     container.innerHTML = '';
@@ -500,5 +674,6 @@ export default {
   getWidth,
   setMode,
   getMode,
-  clearMessages
+  clearMessages,
+  cancelStream
 };

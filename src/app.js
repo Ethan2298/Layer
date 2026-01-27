@@ -21,6 +21,13 @@ import * as AppState from './state/app-state.js';
 import * as OptimisticState from './state/optimistic-state.js';
 
 // ========================================
+// Module Imports - Services
+// ========================================
+
+import * as AnthropicService from './services/anthropic-service.js';
+import * as ChatContext from './services/chat-context.js';
+
+// ========================================
 // Module Imports - Utils
 // ========================================
 
@@ -84,6 +91,10 @@ window.Layer = {
   SideListState,
   AppState,
   OptimisticState,
+
+  // Services
+  AnthropicService,
+  ChatContext,
 
   // Utils
   Utils,
@@ -803,6 +814,10 @@ export {
   SideListState,
   AppState,
 
+  // Services
+  AnthropicService,
+  ChatContext,
+
   // Utils
   Utils,
   DomHelpers,
@@ -849,6 +864,8 @@ export default {
   TabContentManager,
   SideListState,
   AppState,
+  AnthropicService,
+  ChatContext,
   Utils,
   DomHelpers,
   Markdown,
