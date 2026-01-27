@@ -36,6 +36,7 @@ import * as Constants from './constants.js';
 import * as Platform from './features/platform.js';
 import * as Intro from './features/intro.js';
 import * as Sidebar from './features/sidebar.js';
+import * as AgentPanel from './features/agent-panel.js';
 import * as Tabs from './features/tabs.js';
 import * as Mobile from './features/mobile.js';
 import * as Router from './router.js';
@@ -94,6 +95,7 @@ window.Layer = {
   Platform,
   Intro,
   Sidebar,
+  AgentPanel,
   Mobile,
   Router,
 
@@ -735,6 +737,9 @@ export async function init() {
   // Initialize sidebar
   Sidebar.init();
 
+  // Initialize agent panel
+  AgentPanel.init();
+
   // Initialize tabs
   Tabs.initTabs();
 
@@ -808,6 +813,7 @@ export {
   Platform,
   Intro,
   Sidebar,
+  AgentPanel,
   Mobile,
   Router,
 
@@ -850,6 +856,7 @@ export default {
   Platform,
   Intro,
   Sidebar,
+  AgentPanel,
   Mobile,
   Router,
   PromptController,

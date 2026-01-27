@@ -12,11 +12,11 @@
 
 /* Make sortable items interactive */
 .sortable-enabled {
-  cursor: grab;
   touch-action: none; /* Prevent scroll interference on touch */
 }
 
-.sortable-enabled:active {
+/* Only show grabbing cursor while actively dragging */
+.sortable-enabled.ui-sortable-helper {
   cursor: grabbing;
 }
 

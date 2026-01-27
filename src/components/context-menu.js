@@ -25,7 +25,18 @@ export function showContextMenu({ x, y, items }) {
   items.forEach(item => {
     const menuItem = document.createElement('div');
     menuItem.className = 'context-menu-item' + (item.danger ? ' danger' : '');
-    menuItem.textContent = item.label;
+
+    if (item.icon) {
+      const iconWrapper = document.createElement('div');
+      iconWrapper.className = 'context-menu-icon';
+      iconWrapper.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${item.icon}</svg>`;
+      menuItem.appendChild(iconWrapper);
+    }
+
+    const labelEl = document.createElement('span');
+    labelEl.textContent = item.label;
+    menuItem.appendChild(labelEl);
+
     menuItem.onclick = (e) => {
       e.stopPropagation();
       hideContextMenu();

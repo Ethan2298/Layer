@@ -133,6 +133,7 @@ export function initSidebarResize() {
   handle.addEventListener('mousedown', (e) => {
     isResizing = true;
     handle.classList.add('dragging');
+    document.body.classList.add('resizing');
     document.body.style.cursor = 'col-resize';
     document.body.style.userSelect = 'none';
     e.preventDefault();
@@ -148,6 +149,7 @@ export function initSidebarResize() {
     if (isResizing) {
       isResizing = false;
       handle.classList.remove('dragging');
+      document.body.classList.remove('resizing');
       document.body.style.cursor = '';
       document.body.style.userSelect = '';
       // Save width

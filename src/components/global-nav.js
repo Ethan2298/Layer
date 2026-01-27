@@ -1119,8 +1119,9 @@ function handleBookmarkClick() {
     BookmarkStorage.deleteBookmark(existingBookmark.id);
     updateBookmarkIcon(false);
   } else {
-    // Add bookmark
-    const title = currentPageTitle || currentWebUrl;
+    // Add bookmark - get title from webview (most reliable) or fall back to cached/URL
+    const webview = getActiveWebview();
+    const title = webview?.getTitle?.() || currentPageTitle || currentWebUrl;
     const bookmark = BookmarkStorage.createBookmark(
       currentWebUrl,
       title,
