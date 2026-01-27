@@ -40,7 +40,7 @@ body.solarized-mode {
   --text-muted: #839496;   /* Base0 - secondary text */
   --text-dim: #93a1a1;     /* Base1 - tertiary text */
   --text-faint: #93a1a1;   /* Base1 */
-  --border: #eee8d5;       /* Base2 - subtle borders */
+  --border: #d3cbb7;       /* Darker than Base2 for visible borders */
   --accent: #cb4b16;       /* Solarized orange */
   --tab-close-bg: rgb(225, 218, 200);
   --tab-close-bg-hover: rgb(205, 198, 180);
@@ -2986,7 +2986,7 @@ body.light-mode .excel-table tbody tr:hover td {
 /* Solarized mode adjustments */
 body.solarized-mode .excel-table th,
 body.solarized-mode .excel-table td {
-  border-color: #eee8d5;
+  border-color: #d3cbb7;
 }
 
 body.solarized-mode .excel-row-header,
@@ -3523,7 +3523,7 @@ body.solarized-mode .modal-overlay {
 
 body.solarized-mode .modal-content {
   background: #fdf6e3;
-  border-color: #eee8d5;
+  border-color: #d3cbb7;
 }
 
 body.solarized-mode .modal-content h2 {
@@ -3618,12 +3618,12 @@ body.light-mode .context-menu-separator {
 
 body.solarized-mode .context-menu {
   background: #fdf6e3;
-  border-color: #eee8d5;
+  border-color: #d3cbb7;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
 }
 
 body.solarized-mode .context-menu-separator {
-  background: #eee8d5;
+  background: #d3cbb7;
 }
 
 /* ========================================
@@ -3830,7 +3830,7 @@ body.light-mode .delete-modal-btn.cancel:hover {
 
 body.solarized-mode .delete-modal-input {
   background: #eee8d5;
-  border-color: #eee8d5;
+  border-color: #d3cbb7;
 }
 
 body.solarized-mode .delete-modal-input:focus {
@@ -3838,11 +3838,11 @@ body.solarized-mode .delete-modal-input:focus {
 }
 
 body.solarized-mode .delete-modal-btn.cancel {
-  border-color: #eee8d5;
+  border-color: #d3cbb7;
 }
 
 body.solarized-mode .delete-modal-btn.cancel:hover {
-  border-color: #d0cabb;
+  border-color: #c4b9a3;
 }
 
 /* ========================================
