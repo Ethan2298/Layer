@@ -238,7 +238,7 @@ body.platform-darwin #btn-close {
 #app {
   display: none;
   grid-template-columns: var(--sidebar-width, 280px) 1fr;
-  grid-template-rows: 36px 1fr;
+  grid-template-rows: auto 1fr;
   width: 100%;
   height: 100vh;
 }
@@ -248,9 +248,8 @@ body.platform-darwin #btn-close {
   grid-row: 1;
   display: flex;
   align-items: center;
-  height: 36px;
   background: var(--bg);
-  padding: 3px 8px 0;
+  padding: 8px;
   z-index: 5;
   -webkit-app-region: drag; /* Make header draggable */
 }
@@ -813,7 +812,7 @@ body.solarized-mode .web-search-dropdown {
   min-width: 0;
   background: var(--bg-subtle);
   border-radius: 2px;
-  margin: 8px 8px 8px 0;
+  margin: 0 8px 8px 0;
   border: 1px solid var(--border);
 }
 
@@ -1047,17 +1046,34 @@ body.solarized-mode .web-search-dropdown {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-left: 12px;
+  /* Align tabs with content area start (sidebar-width - header-padding - toggle-button) */
+  margin-left: calc(var(--sidebar-width, 280px) - 8px - 32px);
   flex: 1;
   min-width: 0;
-  overflow: hidden;
+  overflow-x: auto;
+  overflow-y: visible;
+}
+
+/* Adjust for macOS traffic light padding */
+body.platform-darwin .header-tabs {
+  margin-left: calc(var(--sidebar-width, 280px) - 78px - 32px);
+}
+
+body.platform-darwin.fullscreen .header-tabs {
+  margin-left: calc(var(--sidebar-width, 280px) - 16px - 32px);
+}
+
+/* When sidebar is collapsed, tabs start near left edge */
+#app.sidebar-collapsed .header-tabs {
+  margin-left: 12px;
 }
 
 .header-tab {
   position: relative;
   display: flex;
   align-items: center;
-  height: 30px;
+  justify-content: center;
+  height: 32px;
   padding: 0 12px;
   flex: 0 1 200px;
   min-width: 80px;
@@ -1072,13 +1088,13 @@ body.solarized-mode .web-search-dropdown {
 }
 
 .tab-icon {
+  position: absolute;
+  left: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
   width: 14px;
   height: 14px;
-  flex-shrink: 0;
-  margin-right: 6px;
 }
 
 .tab-icon svg {
@@ -1127,25 +1143,31 @@ body.solarized-mode .web-search-dropdown {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  text-align: center;
 }
 
 .tab-close {
   position: absolute;
-  right: 8px;
+  right: 4px;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 16px;
-  height: 16px;
+  width: 24px;
+  height: 24px;
   padding: 0;
   border: none;
   border-radius: 4px;
   background: transparent;
   color: var(--text-dim);
-  font-size: 14px;
   cursor: pointer;
   opacity: 0;
   transition: opacity 0.15s ease, background 0.15s ease;
+}
+
+.tab-close svg {
+  width: 14px;
+  height: 14px;
+  stroke: currentColor;
 }
 
 .header-tab:hover .tab-close {
@@ -1994,6 +2016,89 @@ body.solarized-mode .tab-add:hover {
 .settings-select:focus {
   outline: none;
   border-color: var(--accent-color);
+}
+
+/* Settings Modal */
+.settings-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  backdrop-filter: blur(4px);
+}
+
+.settings-modal {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  width: 90%;
+  max-width: 480px;
+  max-height: 80vh;
+  overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+}
+
+.settings-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.settings-modal-header h2 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.settings-modal-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.settings-modal-close:hover {
+  background: var(--bg-hover);
+  color: var(--text);
+}
+
+.settings-modal-body {
+  padding: 20px;
+  overflow-y: auto;
+  max-height: calc(80vh - 60px);
+}
+
+.settings-modal-body .settings-section {
+  margin-bottom: 1.5rem;
+}
+
+.settings-modal-body .settings-section:last-child {
+  margin-bottom: 0;
+}
+
+body.light-mode .settings-modal-overlay {
+  background: rgba(255, 255, 255, 0.6);
+}
+
+body.solarized-mode .settings-modal-overlay {
+  background: rgba(0, 43, 54, 0.6);
 }
 
 /* ========================================

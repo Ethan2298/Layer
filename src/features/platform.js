@@ -62,75 +62,86 @@ export function setTheme(theme) {
 }
 
 // ========================================
-// Settings Button
+// Settings Modal
 // ========================================
 
 /**
- * Initialize settings button
+ * Initialize settings button and modal
  */
 export function initSettingsButton() {
   const btn = document.getElementById('settings-btn');
-  if (!btn) return;
+  const modal = document.getElementById('settings-modal');
+  const closeBtn = document.getElementById('settings-modal-close');
+  const themeSelect = document.getElementById('settings-theme-select');
 
   // Apply saved theme on load
   applyStoredTheme();
 
-  // Open settings tab on click
-  btn.addEventListener('click', openSettingsTab);
+  if (!btn || !modal) return;
+
+  // Open modal on settings button click
+  btn.addEventListener('click', openSettingsModal);
+
+  // Close modal on close button click
+  if (closeBtn) {
+    closeBtn.addEventListener('click', closeSettingsModal);
+  }
+
+  // Close modal on overlay click (outside the modal content)
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) {
+      closeSettingsModal();
+    }
+  });
+
+  // Close modal on Escape key
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && modal.style.display !== 'none') {
+      closeSettingsModal();
+    }
+  });
+
+  // Theme select change handler
+  if (themeSelect) {
+    themeSelect.addEventListener('change', (e) => {
+      setTheme(e.target.value);
+    });
+  }
 }
 
 /**
- * Open settings tab (or switch to existing settings tab)
+ * Open settings modal
+ */
+export function openSettingsModal() {
+  const modal = document.getElementById('settings-modal');
+  const themeSelect = document.getElementById('settings-theme-select');
+
+  if (!modal) return;
+
+  // Update theme select to current value
+  if (themeSelect) {
+    const currentTheme = getCurrentTheme();
+    themeSelect.value = currentTheme;
+  }
+
+  modal.style.display = 'flex';
+}
+
+/**
+ * Close settings modal
+ */
+export function closeSettingsModal() {
+  const modal = document.getElementById('settings-modal');
+  if (modal) {
+    modal.style.display = 'none';
+  }
+}
+
+/**
+ * Open settings tab (deprecated - now opens modal)
  */
 export function openSettingsTab() {
-  const TabState = window.Layer?.TabState;
-  const SideListState = window.Layer?.SideListState;
-  const Router = window.Layer?.Router;
-
-  if (!TabState) return;
-
-  // Check if there's already a settings tab open
-  const tabIds = TabState.getTabIds();
-  for (const tabId of tabIds) {
-    const tab = TabState.getTabById(tabId);
-    if (tab && tab.selection && tab.selection.type === 'settings') {
-      // Switch to existing settings tab
-      TabState.switchTab(tabId);
-
-      // Update DOM active class
-      const tabs = document.querySelectorAll('.header-tab');
-      tabs.forEach(t => t.classList.toggle('active', t.dataset.tabId === tabId));
-
-      // Update URL and window title
-      if (Router) {
-        Router.updateURL('settings', 'settings');
-        Router.updateWindowTitle('Settings');
-      }
-
-      // Trigger view update
-      const updateView = window.Layer?.updateView;
-      if (updateView) updateView();
-      return;
-    }
-  }
-
-  // No existing settings tab - create a new tab
-  createNewTab('Settings', 'settings');
-
-  // Set the new tab to settings view
-  AppState.setViewMode('settings');
-  TabState.setSelection('settings', 'settings');
-
-  // Update URL and window title
-  if (Router) {
-    Router.updateURL('settings', 'settings');
-    Router.updateWindowTitle('Settings');
-  }
-
-  // Clear side list selection by setting index to -1
-  if (SideListState && SideListState.setSelectedIndex) {
-    SideListState.setSelectedIndex(-1);
-  }
+  openSettingsModal();
 }
 
 // ========================================
@@ -269,6 +280,8 @@ export default {
   getCurrentTheme,
   setTheme,
   initSettingsButton,
+  openSettingsModal,
+  closeSettingsModal,
   openSettingsTab,
   updateStatusReporter,
   toggleStatusReporter,

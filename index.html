@@ -27,7 +27,7 @@
           <div class="header-tab active" data-tab-id="1">
             <span class="tab-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></span>
             <span class="tab-title">Home</span>
-            <button class="tab-close" aria-label="Close tab">&times;</button>
+            <button class="tab-close" aria-label="Close tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
           </div>
           <button class="tab-add" aria-label="New tab">+</button>
         </div>
@@ -145,6 +145,33 @@
     <div id="status-reporter">
       <div class="status-title">System Status <span id="status-close" style="float:right;cursor:pointer;color:#666;">[x]</span></div>
       <div id="status-items"></div>
+    </div>
+  </div>
+
+  <!-- Settings Modal -->
+  <div id="settings-modal" class="settings-modal-overlay" style="display: none;">
+    <div class="settings-modal">
+      <div class="settings-modal-header">
+        <h2>Settings</h2>
+        <button id="settings-modal-close" class="settings-modal-close" aria-label="Close">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 6L6 18M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+      <div class="settings-modal-body">
+        <div class="settings-section">
+          <div class="settings-section-title">Appearance</div>
+          <div class="settings-item">
+            <span class="settings-item-label">Theme</span>
+            <select id="settings-theme-select" class="settings-select">
+              <option value="dark">Dark</option>
+              <option value="light">Light</option>
+              <option value="solarized">Solarized</option>
+            </select>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 

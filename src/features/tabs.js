@@ -94,7 +94,7 @@ function syncDomWithState() {
       tab.innerHTML = `
         <span class="tab-icon">${getTabIconHtml(tabData.icon)}</span>
         <span class="tab-title">${escapeHtml(tabData.title)}</span>
-        <button class="tab-close" aria-label="Close tab">&times;</button>
+        <button class="tab-close" aria-label="Close tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
       `;
       tabsContainer.insertBefore(tab, addBtn);
     }
@@ -260,7 +260,7 @@ function handleCreateTab() {
   tab.innerHTML = `
     <span class="tab-icon">${getIconSvgInline('home')}</span>
     <span class="tab-title">Home</span>
-    <button class="tab-close" aria-label="Close tab">&times;</button>
+    <button class="tab-close" aria-label="Close tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
   `;
 
   // Remove active class from other tabs
@@ -305,7 +305,7 @@ export function createNewTab(title = 'New Tab', icon = 'home') {
   tab.innerHTML = `
     <span class="tab-icon">${getIconSvgInline(icon)}</span>
     <span class="tab-title">${title}</span>
-    <button class="tab-close" aria-label="Close tab">&times;</button>
+    <button class="tab-close" aria-label="Close tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
   `;
 
   // Insert before the add button
