@@ -1192,10 +1192,9 @@ body.solarized-mode .web-search-dropdown {
   overflow: hidden;
   min-width: 0;
   background: var(--bg-subtle);
-  border-radius: 0 0 2px 2px;
+  border-radius: 2px;
   margin: 0 8px 8px 0;
   border: 1px solid var(--border);
-  border-top: none;
 }
 
 #content-view::-webkit-scrollbar {
@@ -1448,9 +1447,6 @@ body.solarized-mode .web-search-dropdown {
   overflow-x: auto;
   overflow-y: visible;
   padding: 0 8px;
-  border: 1px solid var(--border);
-  border-radius: 2px 2px 0 0;
-  background: var(--bg);
 }
 
 .header-tab {
@@ -1472,16 +1468,6 @@ body.solarized-mode .web-search-dropdown {
   padding: 0 12px;
 }
 
-/* Active tab border break-through effect */
-.header-tab.active::after {
-  content: '';
-  position: absolute;
-  bottom: -1px;
-  left: 0;
-  right: 0;
-  height: 1px;
-  background: var(--bg-subtle);
-}
 
 .tab-icon {
   position: absolute;
@@ -1607,8 +1593,8 @@ body.solarized-mode .web-search-dropdown {
   background: var(--bg-subtle);
   color: var(--text);
   z-index: 1;
-  margin-bottom: -1px;
-  padding-bottom: 1px;
+  border: 1px solid var(--border);
+  border-bottom: none;
 }
 
 body.light-mode .header-tab.active {
@@ -5478,6 +5464,127 @@ h3.ce-header {
 .note-editor .cm-meta {
   color: var(--text-dim);
   opacity: 0.7;
+}
+
+/* ========================================
+   Block Overlay System
+   ======================================== */
+
+/* Block overlay container */
+.note-editor .cm-block-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+  z-index: 10;
+}
+
+/* Handle wrapper - hidden by default */
+.note-editor .cm-block-handle-wrapper {
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+/* Show handles when editor is focused */
+.note-editor .cm-editor.cm-focused .cm-block-handle-wrapper {
+  opacity: 0.3;
+}
+
+/* Full opacity on hover */
+.note-editor .cm-block-handle-wrapper:hover {
+  opacity: 1 !important;
+}
+
+/* Selected handle state */
+.note-editor .cm-block-handle-wrapper.selected {
+  opacity: 1;
+}
+
+/* Selected block highlight */
+.note-editor .cm-block-selected {
+  background-color: rgba(249, 115, 22, 0.08);
+}
+
+/* Add button */
+.note-editor .cm-block-add-btn {
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: none;
+  border-radius: 3px;
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.15s ease, background-color 0.15s ease;
+}
+
+.note-editor .cm-block-handle-wrapper:hover .cm-block-add-btn {
+  opacity: 1;
+}
+
+.note-editor .cm-block-add-btn:hover {
+  background-color: var(--bg-hover);
+}
+
+/* Drag handle */
+.note-editor .cm-block-handle {
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border-radius: 3px;
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 10px;
+  letter-spacing: -2px;
+  cursor: grab;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.15s ease;
+}
+
+.note-editor .cm-block-handle:hover {
+  background-color: var(--bg-hover);
+}
+
+.note-editor .cm-block-handle:active {
+  cursor: grabbing;
+}
+
+/* Dragging state */
+.note-editor .cm-block-handle-wrapper.dragging {
+  opacity: 0.5;
+}
+
+/* Drop indicator */
+.note-editor .cm-block-drop-indicator {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--accent);
+  pointer-events: none;
+  display: none;
+  z-index: 100;
+  box-shadow: 0 1px 3px rgba(249, 115, 22, 0.3);
+}
+
+/* Dragging state on editor */
+.note-editor .cm-editor.cm-block-dragging {
+  cursor: grabbing !important;
+}
+
+.note-editor .cm-editor.cm-block-dragging .cm-content,
+.note-editor .cm-editor.cm-block-dragging .cm-line {
+  cursor: grabbing !important;
 }
 
 /* ========================================
