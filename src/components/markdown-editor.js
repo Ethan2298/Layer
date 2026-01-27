@@ -35,6 +35,8 @@ import {
 import { layerThemeExtension } from '../lib/codemirror/theme.js';
 import { livePreviewExtension } from '../lib/codemirror/live-preview.js';
 import { slashCommandExtension, cleanupSlashMenu } from '../lib/codemirror/slash-commands.js';
+import { blockOverlayExtension } from '../lib/codemirror/block-overlay.js';
+import { blockDragExtension } from '../lib/codemirror/block-drag.js';
 
 // ========================================
 // Editor State
@@ -304,6 +306,10 @@ export async function initMarkdownEditor(content, noteId, container, onAutoSave)
 
     // Slash commands (Notion-style block insertion)
     slashCommandExtension,
+
+    // Block overlay (Notion-style drag handles)
+    blockOverlayExtension,
+    blockDragExtension,
 
     // Keymaps
     keymap.of([
