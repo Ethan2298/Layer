@@ -12,6 +12,7 @@ import * as ChatContext from '../services/chat-context.js';
 import * as smd from '../vendor/smd.js';
 import * as SideListState from '../state/side-list-state.js';
 import * as Repository from '../data/repository.js';
+import { onSelectionChange, getSelection } from '../state/tab-state.js';
 
 // ========================================
 // Constants
@@ -1863,6 +1864,8 @@ function toggleContextItem(item) {
 
   const index = tab.selectedContext.findIndex(c => c.id === item.id);
   if (index >= 0) {
+    const removed = tab.selectedContext[index];
+    if (removed.isActiveTab) tab._dismissedActiveTabId = removed.id;
     tab.selectedContext.splice(index, 1);
   } else {
     tab.selectedContext.push({
@@ -1884,7 +1887,79 @@ function removeContextItem(itemId) {
   const tab = chatTabs.find(t => t.id === activeTabId);
   if (!tab || !tab.selectedContext) return;
 
+  const removed = tab.selectedContext.find(c => c.id === itemId);
   tab.selectedContext = tab.selectedContext.filter(c => c.id !== itemId);
+
+  // If the user removed the active-tab chip, remember so we don't re-add it
+  // until the selection actually changes to a different item
+  if (removed && removed.isActiveTab) {
+    tab._dismissedActiveTabId = removed.id;
+  }
+
+  saveChatTabs();
+  renderContextChips();
+}
+
+// ========================================
+// Active-Tab Context Chip
+// ========================================
+
+/** Map selection type to searchable-item type */
+const SELECTION_TYPE_MAP = {
+  objective: 'Objective',
+  folder: 'Folder',
+  note: 'Note'
+};
+
+/**
+ * Called when the side-list selection changes.
+ * Swaps the active-tab chip to match the new selection.
+ */
+function handleSelectionChange({ id, type }) {
+  const tab = chatTabs.find(t => t.id === activeTabId);
+  if (!tab) return;
+  if (!tab.selectedContext) tab.selectedContext = [];
+
+  // Remove previous active-tab chip
+  tab.selectedContext = tab.selectedContext.filter(c => !c.isActiveTab);
+
+  // Non-contextual selections (home, settings, etc.) - just clear
+  const itemType = SELECTION_TYPE_MAP[type];
+  if (!itemType || !id) {
+    delete tab._dismissedActiveTabId;
+    saveChatTabs();
+    renderContextChips();
+    return;
+  }
+
+  // If user dismissed this exact item, don't re-add
+  if (tab._dismissedActiveTabId === id) {
+    saveChatTabs();
+    renderContextChips();
+    return;
+  }
+
+  // Selection changed to a new item - clear dismissed tracking
+  delete tab._dismissedActiveTabId;
+
+  // Resolve selection to a searchable item
+  const allItems = getSearchableItems();
+  const match = allItems.find(i => i.id === id && i.type === itemType);
+  if (!match) {
+    saveChatTabs();
+    renderContextChips();
+    return;
+  }
+
+  // Add new active-tab chip
+  tab.selectedContext.push({
+    id: match.id,
+    type: match.type,
+    name: match.name,
+    data: match.data,
+    isActiveTab: true
+  });
+
   saveChatTabs();
   renderContextChips();
 }
@@ -1980,6 +2055,15 @@ export function init() {
   initChatInput();
   initChatTabs();
   initContextSearch();
+
+  // Subscribe to side-list selection changes for active-tab context chip
+  onSelectionChange(handleSelectionChange);
+
+  // Seed active-tab chip from current selection (if any)
+  const currentSelection = getSelection();
+  if (currentSelection.id && currentSelection.type) {
+    handleSelectionChange(currentSelection);
+  }
 
   // Set initial toggle icon state
   const collapsed = localStorage.getItem(PANEL_COLLAPSED_KEY) !== 'false';

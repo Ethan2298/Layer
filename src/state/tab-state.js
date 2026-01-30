@@ -34,6 +34,9 @@ const state = {
 
 const STORAGE_KEY = 'layer-tab-state';
 
+/** @type {Array<function({id: string|null, type: string|null}): void>} */
+const selectionListeners = [];
+
 // ========================================
 // Internal Helpers
 // ========================================
@@ -130,7 +133,16 @@ export function setSelection(id, type) {
   if (tab) {
     tab.selection = { id, type };
     saveToStorage();
+    for (const fn of selectionListeners) fn({ id, type });
   }
+}
+
+export function onSelectionChange(fn) {
+  selectionListeners.push(fn);
+  return () => {
+    const i = selectionListeners.indexOf(fn);
+    if (i >= 0) selectionListeners.splice(i, 1);
+  };
 }
 
 // ========================================
@@ -527,6 +539,7 @@ export default {
   // Selection
   getSelection,
   setSelection,
+  onSelectionChange,
 
   // View Mode
   getViewMode,
