@@ -770,6 +770,13 @@ export async function init() {
     await initStorage();
     // Apply initial route after data is loaded (deep linking)
     applyInitialRoute();
+
+    // Re-fire current selection so agent panel active-tab chip resolves
+    // (initial seed during AgentPanel.init() runs before data is loaded)
+    const sel = TabState.getSelection();
+    if (sel.id && sel.type) {
+      TabState.setSelection(sel.id, sel.type);
+    }
   }, 100);
 
   // Initialize navigation controller
